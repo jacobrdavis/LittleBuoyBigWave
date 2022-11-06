@@ -1,5 +1,5 @@
-# MightyLittleBuoys
-Python package for working with mighty little wave buoys.
+# LittleBuoyBigWaves
+Python package for working with data from little wave buoys that have been in some big waves.
 
 Under very active development...
 ```
@@ -8,7 +8,7 @@ Under very active development...
 ├── README.md
 ├── docs
 ├── examples
-├── mightylittlebuoys
+├── littlebuoysbigwaves
 │   ├── __init__.py
 │   ├── geo
 │   │   ├── __init__.py
