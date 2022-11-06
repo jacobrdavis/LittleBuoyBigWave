@@ -64,19 +64,19 @@ MICRO = _version_micro
 VERSION = __version__
 PACKAGE_DATA = {'littlebuoybigwaves': [pjoin('data', '*')]} # or {'': ['data/x', 'data/x']}
 REQUIRES = [
-    "boto3"
-    "botocore"
-    "cdsapi"
-    "cfgrib"
-    "matplotlib"
-    "Nio"
-    "numpy"
-    "pandas"
-    "pygrib"
-    "python_dateutil"
-    "seaborn"
-    "wget"
-    "xarray"
+    "boto3",
+    "botocore",
+    "cdsapi",
+    "cfgrib",
+    "matplotlib",
+    "Nio",
+    "numpy",
+    "pandas",
+    "pygrib",
+    "python_dateutil",
+    "seaborn",
+    "wget",
+    "xarray",
 ]
 PYTHON_REQUIRES = ">= 3.7"
 
