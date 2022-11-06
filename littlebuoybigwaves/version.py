@@ -62,10 +62,23 @@ MAJOR = _version_major
 MINOR = _version_minor
 MICRO = _version_micro
 VERSION = __version__
-PACKAGE_DATA = {'littlebuoybigwaves': [pjoin('data', '*')]}
-REQUIRES = ["numpy"]
+PACKAGE_DATA = {'littlebuoybigwaves': [pjoin('data', '*')]} # or {'': ['data/x', 'data/x']}
+REQUIRES = [
+    "boto3"
+    "botocore"
+    "cdsapi"
+    "cfgrib"
+    "matplotlib"
+    "Nio"
+    "numpy"
+    "pandas"
+    "pygrib"
+    "python_dateutil"
+    "seaborn"
+    "wget"
+    "xarray"
+]
 PYTHON_REQUIRES = ">= 3.7"
-
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
