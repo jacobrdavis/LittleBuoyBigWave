@@ -36,7 +36,7 @@ import warnings
 import pickle
 import xarray as xr
 import numpy as np
-from typing import List
+from typing import List, Iterable
 
 #%% functions
 def download_dir(prefix: str, local: str, bucket: str, client: boto3.client, keymatch: str):
@@ -97,6 +97,13 @@ def download_dir(prefix: str, local: str, bucket: str, client: boto3.client, key
             os.makedirs(os.path.dirname(dest_pathname))
         client.download_file(bucket, k, dest_pathname)
 
+def closest_value(x: float,X: Iterable): # lat,lon,latList, lonList):
+    """
+    Helper function to find index of closest value of x in list X
+    
+    """
+    Xidx = np.argmin(abs(X-x)) 
+    return Xidx    
 
 def download_file(bucketfile: str, local: str, bucket: str, client: str):
     """
@@ -241,6 +248,82 @@ def collateGFSwave(startDate: datetime.datetime, endDate: datetime.datetime, pat
             dataset.close()
     print('Done.')       
     return data
+
+def match_buoy_and_GFSwave(buoy : pd.DataFrame, GFSwave : dict, concatOutput : bool ,prefix : str = ''):
+    """
+    match GFSwave and buoy locations
+
+    Input:
+        - buoy, Pandas dataframe of buoy data 
+            * Note the dataframe must have a datetime index and the location must be stored with 
+            'latitude' and 'longitude' as the column names
+        - GFSwave, a collated list of #TODO:
+
+    """
+    matches = {key:[] for key in GFSwave[0].keys()}
+    buoyIndices = []
+    nLon = np.size(GFSwave[0]['longitude'])
+    nLat = np.size(GFSwave[0]['latitude'])
+
+    for GFSrun in GFSwave:
+        # timestamp of GFSrun:
+        GFStime = GFSrun['time'] 
+    #TODO: check for if GFSrun['time'][0] is greater than buoytime[-1]...
+        # find index of closest match with the buoy in time:
+        buoyIdx = closest_value(GFStime,buoy.index.values)
+        buoyTime = buoy.index[buoyIdx].to_numpy()
+        
+        # time difference:
+        timeDiff = buoyTime - GFStime
+        
+        # check if the time difference is less than one hour:
+        if np.abs(timeDiff) < np.timedelta64(1, 'h'):
+
+            # find closest lat and lon:
+            GFSlatIdx  = closest_value(buoy.iloc[buoyIdx]['latitude'],GFSrun['latitude'])
+            GFSlonIdx  = closest_value(buoy.iloc[buoyIdx]['longitude']+360,GFSrun['longitude'])
+            
+            # append time and location to dict of matches:
+            matches['time'].append(GFSrun['time'])
+            matches['latitude'].append(GFSrun['latitude'][GFSlatIdx])
+            matches['longitude'].append(GFSrun['longitude'][GFSlonIdx])
+            
+            # record omitted keys, appending prefix:
+            omittedKeys = ['time','latitude','longitude']
+
+            # append all other keys stored in the GFSrun:
+            for key in GFSrun.keys() - omittedKeys:
+                size = np.size(GFSrun[key])
+                if size == nLat*nLon:
+                    matches[key].append(GFSrun[key][GFSlatIdx,GFSlonIdx])
+                elif size == 3*nLat*nLon:
+                    matches[key].append([GFSrun[key][level][GFSlatIdx,GFSlonIdx] for level in range(0,3)])
+                else:
+                    matches[key].append(GFSrun[key])
+
+            # append the matching index in the buoy dataframe:    
+            buoyIndices.append(buoyIdx)
+
+        else: # no match in time
+            # print('out of time range')
+            continue
+
+    # convert the GFSwave matches dictionary to a single dataframe:
+    GFSwave_matches = pd.DataFrame(matches).add_prefix(prefix)
+
+    # extract matching buoy rows from the larger buoy dataframe:
+    buoy_matches = buoy.iloc[buoyIndices]
+
+    # TODO: check_timedeltas(datetimeArr1 = buoy_matches.index.tz_convert(None).to_numpy(),
+    #                  datetimeArr2 = GFSwave_matches[prefix+'time'].to_numpy())
+
+    if concatOutput == True:
+        df_concat = pd.concat([buoy_matches, GFSwave_matches.set_index(buoy_matches.index)], axis=1)
+        return df_concat
+
+    else:
+        GFSwave_matches.set_index(prefix+'time',inplace=True)
+        return buoy_matches, GFSwave_matches
 
 """stand-alone and testing"""
 def main():

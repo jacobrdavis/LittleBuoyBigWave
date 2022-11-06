@@ -1,6 +1,9 @@
 """TODO module docstr"""
 
-__all__ = ['haversine_distance']
+__all__ = [
+    "haversine_distance",
+    "get_extent",
+]
 
 import numpy as np
 
@@ -45,3 +48,18 @@ def haversine_distance(lon1, lat1, lon2, lat2):
 
     # validation from R. Bullock: dist,bearing = haversine_distance(105.2833,40.0167,-137.65,-33.9333)
     return distkm, bearing
+
+def get_extent(latitudes: np.array, longitudes: np.array, offset: float = 0):
+    """
+    #TODO:
+    """
+    latitudes = np.sort(latitudes)
+    longitudes = np.sort(longitudes)
+
+    newExtent = np.array([
+        latitudes[0] + offset,
+        latitudes[-1] - offset,
+        longitudes[0] + offset,
+        longitudes[-1] - offset,
+    ])
+    return newExtent
