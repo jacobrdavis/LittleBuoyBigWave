@@ -1,5 +1,5 @@
 # LittleBuoyBigWaves
-Python package for working with data from little wave buoys that have been in some big waves.
+Data exploration and analysis tools intended for use with small, drifting wave buoys.
 
 ```
 .
