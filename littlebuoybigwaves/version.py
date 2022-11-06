@@ -26,13 +26,13 @@ CLASSIFIERS = [
 ]
 
 # Description should be a one-liner:
-description = "LittleBuoyBigWaves: tools for working with data from drifting wave buoys."
+description = "LittleBuoyBigWaves: Data exploration and analysis tools intended for use with small, drifting wave buoys."
 # Long description will go up on the pypi page
 long_description = """
 
 LittleBuoyBigWaves
 ========
-Tools for working with data from drifting wave buoys. 
+Data exploration and analysis tools intended for use with small, drifting wave buoys. 
 
 .. _README: https://github.com/jacobrdavis/LittleBuoyBigWaves/blob/main/README.md
 
