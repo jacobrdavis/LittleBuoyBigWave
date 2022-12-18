@@ -16,17 +16,14 @@ __all__ = [
     'read_ERA5_gribfile',
     'generate_ERA5_API_request_dict', 
     'generate_ERA5_API_request_filename',
+    'generate_ERA5_daterange',
     'ERA5_API_request',
+    'get_ERA5_ymdh',
     'get_ERA5_variables',
     'get_ERA5_extent',
-    'closest_value',
-    'hour_rounder',
-    'generate_daterange',
-    'sort_str_numbers',
-    'get_ymdh',
-    'check_timedeltas',
     'match_buoy_and_ERA5',
 ]
+
 
 from ast import Return
 import pandas as pd
@@ -250,7 +247,7 @@ def hour_rounder(t):
 
     return t_rounded
 
-def generate_daterange(startDate, endDate, interval = 'days'):
+def generate_ERA5_daterange(startDate, endDate, interval = 'days'):
     """
     generate daterange in daily or hourly increments
     
@@ -286,7 +283,7 @@ def sort_str_numbers(strNums):
     return list(strNumsSorted)
 
 
-def get_ymdh(daterange):
+def get_ERA5_ymdh(daterange):
     """
     Get years, months, days, and hours from a daterange in string format accepted by ERA5 API.
     

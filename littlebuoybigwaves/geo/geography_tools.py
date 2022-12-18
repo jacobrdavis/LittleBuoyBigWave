@@ -1,6 +1,7 @@
 """TODO module docstr"""
 
 __all__ = [
+    "euclidean_dist",
     "haversine_distance",
     "get_extent",
 ]
@@ -8,9 +9,9 @@ __all__ = [
 import numpy as np
 
 
-def eulerian_dist(x1,y1,x2,y2):
+def euclidean_dist(x1,y1,x2,y2):
     """
-    Compute the Eulerian distance b/t two points
+    Compute the euclidean distance b/t two points
 
     """ 
     dx = np.subtract(x2,x1)

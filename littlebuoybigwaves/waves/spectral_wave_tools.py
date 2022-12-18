@@ -1,6 +1,8 @@
 """
 A collection of spectral water wave functions.
+#TODO: UNITTESTS
 """
+
 __all__ = [
     'mean_square_slope',
     'energy_period',
@@ -8,171 +10,276 @@ __all__ = [
     'sig_wave_height',
 ]
 
+import warnings
+
 import numpy as np
 
-def mean_square_slope(E, f, norm=False, range='dynamic'):
-    """
-    Function to compute mean square slope as 4th moment of spectral tail
-    
-    Input:
-        - E, input array of energy densities ([n,1] arr OR [n,m] ndarr)
-        - f, input array of frequencies ([n,1] arr OR [n,m] ndarr)
-        - norm, boolean flag for normalization by frequency range (see Iyer et al. 2022 eq. 4)
-        - range, indicator or literal input to indicate mss integration frequency range
-            Accepted values:
-            * 'dynamic', integrate from fe to 2*fe where 'fe' is the energy frequency
-            * 'total', integrate over the entire range from min(f) to max(f)
-            * list or tuple of frequency limits, e.g. [0.1,0.5]
-            * if none of the above are provided, the default static range 0.2 to 0.4 Hz is used
-    
-    Output:
+from typing import Tuple
 
-    if 'norm' is True
-        - mssOut, normalized mean square slope value ([1,] float)
-        - bandWidth, frequency range used to calculate mssOut (difference of integral limits) ([1,] float)
-        - freqRangeLogical, logical array corresponding to valid frequencies in specified range ([nx1] bool arr) 
-    
-    if 'norm' is False
-        - mssOut, mean square slope value ([1,] float)
+
+
+def mean_square_slope(energy: np.ndarray,
+                      freq: np.ndarray,
+                      freq_range='dynamic',
+                      norm=None,
+                      direction=None,
+                      spread=None
+) -> Tuple:
+    """
+    Compute mean square slope (mss) as 4th moment of spectral tail.
+
+    Args:
+        - energy, (np.ndarray) energy densities [n,m] (m^2/Hz).
+        - freq, (np.ndarray) frequencies [n,m] (Hz).
+        - freq_range, keyword or literal specifying integration range.
+            Accepted values:
+            * 'dynamic', integrate over energy frequencies f_e to 2*f_e
+            * 'total', integrate from min(freq) to max(freq)
+            * `list`, `tuple`, or `ndarray` of freq limits, e.g. [0.1,0.5]
+        - norm, (str or None) keyword specifying normalization type.
+            Accepted values:
+            * 'frequency', normalize by bandwidth of `freq` where `freq`
+               is in `freq_range` (divide by max-min)
+            * 'direction', normalize by 'direction' where where `freq`
+               is in `freq_range` (divide element-wise)
+            * 'spread', normalize by 'spread' where where `freq` is
+               in `freq_range` (divide element-wise)
+        - direction, (np.ndarray) spectral directions [n,m] (rad).
+            * Used only if `norm` = 'direction'
+        - spread, (np.ndarray) spectral directional spread [n,m] (rad).
+            * Used only if `norm` = 'spread'
+
+    Returns:
+        - mss, (float) mean square slope [1,]
+        - bandwidth, (float) difference of mss integral limits [1,]
+        - freq_range_logical, (nd.array[bool]) logical array
+          corresponding to valid frequencies in specified range [n,1]
 
     Example:
     
     Compute normalized mss over the static range 0.1 Hz to 0.5 Hz
-        mss = mean_square_slope(E, f, norm=True, range=[0.1, 0.5])
+        mss = mean_square_slope(energy, freq, norm=True, freq_range=[0.1, 0.5])
 
     """
+    VALID_NORMS = ['frequency', 'direction', 'spread', None]
+    VALID_FREQ_RANGES = ['dynamic', 'total', list, tuple, np.ndarray]
+    ACC_GRAV = 9.81 # (m/s)
+
     # if inputs are lists, cast them as arrays:
-    E = np.asarray(E)
-    f = np.asarray(f)
+    energy = np.asarray(energy)
+    freq = np.asarray(freq)
     
-    #TODO: numpy stack?
-
-
     # Handle ndarrays
-    #TODO: put into a fun?
-    if len(E.shape) >= 2:
-        if norm == True: #TODO: make this work
-            mssOut = []
-            bandWidth = []
-            freqRangeLogical = []
+    if energy.ndim > 1:
+        return _handle_mean_square_slope_ndarray(energy, freq, 
+                                                freq_range=freq_range,
+                                                norm=norm,
+                                                direction=direction,
+                                                spread=spread)
+    # Convert NoneType norm to an empty list and raise an error if it is
+    # an invalid value. If multiple norms are specified, every element
+    # must be checked against VALID_NORMS.
+    if norm is None:
+        norm = []
 
-            for f_i,E_i in zip(f,E): #TODO: vectorize? maybe too ragged...
-                mss_i, bandWidth_i, freqRangeLogical_i = mean_square_slope(E_i, f_i, norm, range)#TODO: dont specify opts
-                mssOut.append(mss_i)
-                bandWidth.append(bandWidth_i)
-                freqRangeLogical.append(freqRangeLogical_i)
-                
-            return np.array(mssOut), np.array(bandWidth), np.array(freqRangeLogical)
-
+    if norm:
+        if isinstance(norm, list) and len(norm)>1:
+            bad_norm = any(n not in VALID_NORMS for n in norm)
         else:
-            mssOut = np.array([mean_square_slope(Ei, fi, norm, range) for fi,Ei in zip(f,E)])
-            return mssOut
+            bad_norm = norm not in VALID_NORMS
+        if bad_norm:
+            raise ValueError((f'The specified normalization, {norm}, is invalid'
+            f' or not supported. The valid options are: {VALID_NORMS}'))
 
-    # compute logical array corresponding to valid frequencies in specified range (or range type)
-    if range == 'dynamic':
-        # fe  = np.divide(np.sum(np.multiply(f,E)),np.sum(E))
-        fe = energy_period(E, f, returnAsFreq = True)
-        freqRangeLogical = np.logical_and(f>=fe, f<=2*fe)
 
-    elif range == 'total':
-        freqRangeLogical = np.logical_and(f>=np.min(f), f<=np.max(f))
-
-    elif type(range) is list or type(range) is tuple:
-        freqRangeLogical = np.logical_and(f>=range[0], f<=range[1])
-
+    # Determine logical array corresponding to valid frequencies.
+    if freq_range == 'dynamic':
+        f_e = energy_period(energy, freq, returnAsFreq = True)
+        freq_range_logical = np.logical_and(freq>=f_e, freq<=2*f_e)
+    elif freq_range == 'total':
+        freq_range_logical = np.logical_and(freq>=np.min(freq), freq<=np.max(freq))
+    elif isinstance(freq_range, (list, tuple, np.ndarray)):
+        freq_range_logical = np.logical_and(freq>=freq_range[0], freq<=freq_range[1])
     else:
-        freqRangeLogical = np.logical_and(f>=0.2,f<=0.4)
-    
-    fourthMoment =spectral_moment(E[freqRangeLogical], f=f[freqRangeLogical], n=4)  # fourthMoment = np.sum((f[freqRangeLogical])**4 * E[freqRangeLogical] ) * df  # NOTE: spotter appears to have non-constant df 
-    g = 9.81 # (m/s)
-    mss = ((2*np.pi)**4*fourthMoment)/(g**2) # (-)
+        raise ValueError((f'The specified freq range, {freq_range}, is invalid'
+        f' or not supported. The valid options are: {VALID_FREQ_RANGES}'))
 
-    if norm == True:
-        bandWidth = np.ptp(f[freqRangeLogical])
-        mssOut = mss/bandWidth
-        return mssOut, bandWidth, freqRangeLogical
+    # Compute the fourth moment, bandwidth, and mean square slope.
+    # Handle the special cases where directional or spread normalization
+    # are specified; in these cases, the energy must be normalized by
+    # the frequency-dependent direction prior to integration.
+    if 'direction' in norm:
+        if direction is not None:
+            energy = energy/direction
+        else:
+            raise ValueError(('Directional normalization specified but no'
+            ' direction array provided. Please provide input for `direction`.'))
+    if 'spread' in norm:
+        if spread is not None:
+            energy = energy/spread
+        else:
+            raise ValueError(('Directional spread normalization specified but no'
+            ' spread array provided. Please provide input for `spread`.'))
 
+    fourth_moment =spectral_moment(energy[freq_range_logical],
+                                   freq=freq[freq_range_logical],
+                                   n=4)
+    mss = ((2*np.pi)**4*fourth_moment)/(ACC_GRAV**2) # (-)
+    bandwidth = np.ptp(freq[freq_range_logical])
+  
+    # Handle the remaining normalization cases.
+    if 'frequency' in norm:
+        mss = mss/bandwidth
     else:
-        mssOut = mss
-        return mssOut
+        pass
+
+    return mss, bandwidth, freq_range_logical
+
+def _handle_mean_square_slope_ndarray(energy, freq, direction=None, spread=None, **kwargs):
+    """
+    Helper function to handle multidimensional input to the
+    `mean_square_slope()` function. Not yet vectorized so it can handle
+    ragged arrays...
+
+    Args:
+        - energy, (np.ndarray) energy densities [n,m] (m^2/Hz).
+        - freq, (np.ndarray) frequencies [n,m] (Hz).
+
+        All remaining arguments are passed to `mean_square_slope()`
+
+    Returns:
+        Tuple: of three nd.arrays containing the mss, bandwidth, and
+        a boolean array corresponding  to the mss frequency range.
+    """
+    mss = []
+    bandwidth = []
+    freq_range_logical = []
+
+    if spread is None and direction is None:
+        for freq_i, energy_i in zip(freq, energy):
+            out = mean_square_slope(energy_i,
+                                    freq_i,
+                                    **kwargs)
+            mss.append(out[0])
+            bandwidth.append(out[1])
+            freq_range_logical.append(out[2])
+
+    if spread is None and direction is not None:
+        for freq_i, energy_i, direction_i in zip(freq, energy, direction):
+            out = mean_square_slope(energy_i,
+                                    freq_i,
+                                    direction=direction_i,
+                                    **kwargs)
+            mss.append(out[0])
+            bandwidth.append(out[1])
+            freq_range_logical.append(out[2])
+
+    if  spread is not None and direction is None:
+        for freq_i, energy_i, spread_i in zip(freq, energy, spread):
+            out = mean_square_slope(energy_i,
+                                    freq_i,
+                                    spread=spread_i,
+                                    **kwargs)
+            mss.append(out[0])
+            bandwidth.append(out[1])
+            freq_range_logical.append(out[2])
+    if  spread is not None and direction is not None:
+        for freq_i, energy_i, spread_i, direction_i \
+                    in zip(freq, energy, spread, direction):
+            out = mean_square_slope(energy_i,
+                                    freq_i,
+                                    spread=spread_i,
+                                    direction=direction_i,
+                                    **kwargs)
+            mss.append(out[0])
+            bandwidth.append(out[1])
+            freq_range_logical.append(out[2])
+
+    return np.array(mss), np.array(bandwidth), np.array(freq_range_logical)
     
-def energy_period(E, f, returnAsFreq = False):
+def energy_period(energy, freq, returnAsFreq = False):
     """
     Function to compute energy period (centroid period)
     
     Input:
-        - E, input array of energy densities ([n,1] arr OR [n,m] ndarr)
-        - f, input array of frequencies ([n,1] arr OR [n,m] ndarr)
+        - energy, input array of energy densities ([n,1] arr OR [n,m] ndarr)
+        - freq, input array of frequencies ([n,1] arr OR [n,m] ndarr)
         - returnAsFreq, optional boolean flag to return energy frequency rather than its reciprocal
     
     Output:
-        - Te, energy period = fe^(-1) ([1,] float)
-            * if E is empty or invalid, Te is assigned a NaN
+        - Te, energy period = f_e^(-1) ([1,] float)
+            * if energy is empty or invalid, Te is assigned a NaN
 
     Example:
-        Te = energy_period(E, f)
+        Te = energy_period(energy, freq)
 
     """
-    if hasattr(E, '__len__') and (not isinstance(E, str)):
-        firstMoment = spectral_moment(E, f, n=1) # = np.trapz(np.multiply(E,f),x=f)
-        area = spectral_moment(E, f, n=0) # = np.trapz(E,x=f)
-        fe = np.divide(firstMoment,area)
+    if hasattr(energy, '__len__') and (not isinstance(energy, str)):
+        firstMoment = spectral_moment(energy, freq, n=1) # = np.trapz(np.multiply(energy,freq),x=freq)
+        area = spectral_moment(energy, freq, n=0) # = np.trapz(energy,x=freq)
+        f_e = np.divide(firstMoment,area)
         
-        if returnAsFreq == True:
-            return fe
+        if not 0.05 < f_e < 2:
+            warnings.warn((f'The energy frequency, `f_e` = {np.round(f_e,3)}'
+            ' Hz, is suspicious...check that you have provided `energy` and'
+            ' `freq` in the correct order.'))
 
-        Te = np.reciprocal(fe)
+        if returnAsFreq == True:
+            return f_e
+
+        Te = np.reciprocal(f_e)
     else:
         Te = np.NaN
+        warnings.warn('`energy` is empty or invalid; output assigned as NaN.')
     return Te
 
-def spectral_moment(E, f=None, n=0):
+def spectral_moment(energy, freq=None, n=0):
     """
     Function to compute 'nth' spectral moment
     
     Input:
-        - E, input array of energy densities ([n,1] arr OR [n,m] ndarr)
-        - f, input array of frequencies ([n,1] arr OR [n,m] ndarr)
+        - energy, input array of energy densities ([n,1] arr OR [n,m] ndarr)
+        - freq, input array of frequencies ([n,1] arr OR [n,m] ndarr)
         - n, moment ([1,] int)
        
     Output:
         - mn, nth spectral moment ([1,] float)
-            * if E is empty or invalid, mn is assigned a NaN
+            * if energy is empty or invalid, mn is assigned a NaN
 
     Example:
     
     Compute 4th spectral moment:
-        m4 = spectral_moment(E, f, n=4)
+        m4 = spectral_moment(energy, freq, n=4)
     """
-    if hasattr(E, '__len__') and (not isinstance(E, str)):
-        # m_n = np.trapz(np.multiply(E,f**n),x=f)
-        fn = np.power(f,n)
-        mn = np.trapz(np.multiply(E,fn),x=f)
+    if hasattr(energy, '__len__') and (not isinstance(energy, str)):
+        # m_n = np.trapz(np.multiply(energy,freq**n),x=freq)
+        fn = np.power(freq,n)
+        mn = np.trapz(np.multiply(energy,fn),x=freq)
         
     else:
         mn = np.NaN
     return mn
 
-def sig_wave_height(E, f):
+def sig_wave_height(energy, freq):
     """
     Function to compute significant wave height
     
     Input:
-        - E, input array of energy densities ([n,1] arr OR [n,m] ndarr)
-        - f, input array of frequencies ([n,1] arr OR [n,m] ndarr)
+        - energy, input array of energy densities ([n,1] arr OR [n,m] ndarr)
+        - freq, input array of frequencies ([n,1] arr OR [n,m] ndarr)
        
     Output:
         - Hs, significant wave height ([1,] float)
-            * if E is empty or invalid, Hs is assigned a NaN
+            * if energy is empty or invalid, Hs is assigned a NaN
 
     Example:
     
-        Hs = sig_wave_height(E, f)
+        Hs = sig_wave_height(energy, freq)
 
     """
-    if hasattr(E, '__len__') and (not isinstance(E, str)):
+    if hasattr(energy, '__len__') and (not isinstance(energy, str)):
         # recover variance from spectrum:
-        m0 = spectral_moment(E, f, n=0) 
+        m0 = spectral_moment(energy, freq, n=0) 
 
         # standard deviation:
         stDev = np.sqrt(m0)  
@@ -187,11 +294,11 @@ def sig_wave_height(E, f):
 
 #%% testing
 def main():
-    E = [0.1, 0.5, 10, 0.5]
-    f = [0.05, 0.1, 0.25, 0.5]
-    range = [0.05,0.5]
-    range = 'total'
-    mss = mean_square_slope(E, f, norm=False, range=range)
+    energy = [0.1, 0.5, 10, 0.5]
+    freq = [0.05, 0.1, 0.25, 0.5]
+    freq_range = [0.05,0.25]
+    # freq_range = 'total'
+    mss = mean_square_slope(energy, freq, norm='frequency', freq_range=freq_range)
     print(mss)
 
 if __name__=='__main__':

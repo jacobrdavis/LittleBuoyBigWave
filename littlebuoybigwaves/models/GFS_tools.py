@@ -9,20 +9,26 @@ User interface here: https://noaa-gfs-bdp-pds.s3.amazonaws.com/index.html
 Contents:
     - download_dir(prefix, local, bucket, client, keymatch)
     - download_file(bucketfile,local,bucket,client):
-    - generate_daterange(start,end):
-    - querybydate(daterange,model,submodel,type,region,resolution,forecasthour,bucket,localfolderbase):
-    - collateGFSwave(startDate, endDate, path, model, submodel, region, resolution, forecasthour)
+    - generate_GFS_daterange(start,end):
+    - query_GFS_by_date(daterange,model,submodel,type,region,resolution,forecasthour,bucket,localfolderbase):
+    - collate_GFS_wave(startDate, endDate, path, model, submodel, region, resolution, forecasthour)
     - main()
 
 Log:
     - 2021-11-11, J.Davis: created NOAA_GFS_AWS_query_tools.py
     - 2022-01-07, J.Davis: updated for hurricane wave slope comparisons
     - 2022-09-06, J.Davis: renamed to GFS_tools and updated docstrings
-    - 2022-09-07 added collateGFSwave(...) and updated to store every key in GFS dataset
+    - 2022-09-07 added collate_GFS_wave(...) and updated to store every key in GFS dataset
 
 TODO:
     - implement a model dict object that can be passed to each function w/o need for input every time
 """
+__all__ = [
+    "query_GFS_by_date",
+    "generate_GFS_daterange",
+    "match_buoy_and_GFSwave",
+    "collate_GFS_wave",
+]
 #%%
 import pandas as pd
 import boto3 #https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html
@@ -124,7 +130,7 @@ def download_file(bucketfile: str, local: str, bucket: str, client: str):
         os.makedirs(os.path.dirname(dest_pathname))
     client.download_file(bucket, bucketfile, dest_pathname)
 
-def generate_daterange(start: pd.Timestamp,end: pd.Timestamp) -> List[str]: 
+def generate_GFS_daterange(start: pd.Timestamp,end: pd.Timestamp) -> List[str]: 
     """
     Helper function to create a date range from a start date to an end date and convert it to a
     list of strings for use in a GFS AWS query. Currently hard-coded for a timedelta of 1 day.
@@ -151,14 +157,14 @@ def generate_daterange(start: pd.Timestamp,end: pd.Timestamp) -> List[str]:
     daterangestr = [date.strftime("%Y%m%d") for date in daterange]
     return daterangestr
 
-def querybydate(daterange: List[str], model: str, submodel: str, type: str, region: str, 
+def query_GFS_by_date(daterange: List[str], model: str, submodel: str, type: str, region: str, 
                 resolution: str, forecasthour: str, bucket: str, localfolderbase: str):
     """
     Function to query the GFS AWS S3 bucket by date in yyyymmdd format and by the target 
     model, submodel, model output type, region, resolution, and forecast hour.
 
     Input:
-        - daterange: list of dates in 'yyyymmdd' format (e.g. created using generate_daterange)
+        - daterange: list of dates in 'yyyymmdd' format (e.g. created using generate_GFS_daterange)
         - model, name of the forecast model (e.g. 'gfs')
         - submodel, name of the submodel component (e.g. 'wave')
         - type, model output type (e.g. 'gridded')
@@ -176,7 +182,7 @@ def querybydate(daterange: List[str], model: str, submodel: str, type: str, regi
     For the GFS model, to download all of the global, 0.25 degree resolution gridded wave data at 
     all forecast hours (0000, 0600, 1200 and 1800) with 0 hour lead time over week of September 4, 
     2022, use this functions as follows:
-        querybydate(daterange = generate_daterange(start = datetime(2022,9,4), end = datetime(2022,9,11))
+        query_GFS_by_date(daterange = generate_GFS_daterange(start = datetime(2022,9,4), end = datetime(2022,9,11))
                     model = 'gfs',
                     submodel = 'wave',
                     type = 'gridded',
@@ -199,7 +205,7 @@ def querybydate(daterange: List[str], model: str, submodel: str, type: str, regi
 
     print('Complete.')
 
-def collateGFSwave(startDate: datetime.datetime, endDate: datetime.datetime, path: str, model: str,
+def collate_GFS_wave(startDate: datetime.datetime, endDate: datetime.datetime, path: str, model: str,
                    submodel: str, region: str, resolution: str, forecasthour: str) -> List[dict]:
     """
     Function to read GFSWave files into an dictionary and collate those dictionaries into a list.
@@ -221,7 +227,7 @@ def collateGFSwave(startDate: datetime.datetime, endDate: datetime.datetime, pat
 
     Example:
     
-        data = collateGFSwave(startDate=datetime(2022,9,6), 
+        data = collate_GFS_wave(startDate=datetime(2022,9,6), 
                               endDate = =datetime(2022,9,11),
                               path = '../GFS_data/',
                               model = 'gfs',
@@ -346,8 +352,8 @@ def main():
     #%% download by date range:
     start = datetime.datetime.strptime("2021-08-15", "%Y-%m-%d")
     end = datetime.datetime.strptime("2021-08-30", "%Y-%m-%d")
-    daterange = generate_daterange(start,end)
-    querybydate(daterange,model,submodel,type,region,resolution,forecasthour,bucket,localfolderbase='./testquerybydate')
+    daterange = generate_GFS_daterange(start,end)
+    query_GFS_by_date(daterange,model,submodel,type,region,resolution,forecasthour,bucket,localfolderbase='./testquery_GFS_by_date')
 
     #%% download entire directory:
     s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED)) # https://github.com/boto/boto3/issues/1200
