@@ -71,7 +71,7 @@ def read_coamps_wnd_file(wnd_file: str, uniform_parameters: bool = False): #
             if line_is_header:
                 if len(data) > 0 and data_count != 2*n_val:
                     raise ValueError(
-                        f'Unexpected number of values between headers; got'
+                        f'Unexpected number of values between headers; '
                         f'got {data_count} values but expected {2*n_val}.')
                 
                 coords['time'].append(_parse_time(line_is_header))
