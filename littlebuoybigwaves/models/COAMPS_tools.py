@@ -2,7 +2,6 @@
 A collection of functions for working with COAMPS-TC model data.
 
 #TODO:
-    - uniform_parameters does not update 'time'.... need  _parse_parameter(line)
     - use np for datetimes?
     - test shapes in unittests
 """
@@ -25,7 +24,7 @@ PARAMETER_REGEX = {
     'SWLon': r'SWLon=\s*-?\d+\.*\d*',
 }
 
-def read_coamps_wnd_file(wnd_file: str): #uniform_parameters: bool = False
+def read_coamps_wnd_file(wnd_file: str, uniform_parameters: bool = False): #
     """
     Read an Oceanweather WIN file (.wnd) output by COAMPS.
 
@@ -37,7 +36,6 @@ def read_coamps_wnd_file(wnd_file: str): #uniform_parameters: bool = False
     Args:
         wnd_file (str): path to the .wnd file
 
-        TODO: this does not work right:
         uniform_parameters (bool): flag specifying if the header
             parameters are uniform or not. If True, parameters are only
             read from the first header. Otherwise, parameters are re-
@@ -75,10 +73,12 @@ def read_coamps_wnd_file(wnd_file: str): #uniform_parameters: bool = False
                     raise ValueError(
                         f'Unexpected number of values between headers; got'
                         f'got {data_count} values but expected {2*n_val}.')
+                
+                coords['time'].append(_parse_time(line_is_header))
 
-                if not parameters: #or not uniform_parameters:
+                if not parameters or not uniform_parameters:
                     parameters = _parse_header(line)
-                    coords['time'].append(parameters['DT'])
+                    # coords['time'].append(parameters['DT'])
                     coords['longitude'].append(_construct_grid_coord(
                                                         parameters['SWLon'],
                                                         parameters['DX'],
@@ -120,6 +120,14 @@ def read_coamps_wnd_file(wnd_file: str): #uniform_parameters: bool = False
 
     return coords, fields
 
+def _parse_time(time):
+    name, value = _parse_parameter(time.group())
+    if name == 'DT':
+        value = datetime.strptime(value, '%Y%m%d%H')
+    else:
+        raise ValueError(f'Incorrect time parameter `{name}`.')
+    return value
+
 def _parse_header(header):
     """
     Parse a .wnd file header.
@@ -141,8 +149,9 @@ def _parse_header(header):
             name, value = _parse_parameter(match.group())
 
         if param == 'DT':
-            value = datetime.strptime(value, '%Y%m%d%H')
-        elif param in ['iLat', 'iLong']:
+            pass
+        #     value = datetime.strptime(value, '%Y%m%d%H')
+        elif param in ['iLat', 'iLong']: #elif
             value = int(value)
         elif param in ['DX', 'DY', 'SWLat', 'SWLon']:
             value = float(value)
