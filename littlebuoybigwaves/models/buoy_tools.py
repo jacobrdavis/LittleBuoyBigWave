@@ -16,6 +16,7 @@ def closest_value(x: float,X: Iterable): # lat,lon,latList, lonList):
 def match_model_and_buoy_by_interpolation(
     buoy: dict,
     model: dict,
+    temporal_tolerance: np.timedelta64 = np.timedelta64(30, 'm'),
 ):
     """
     Match model and buoy observations using linear interpolation in time
@@ -23,31 +24,56 @@ def match_model_and_buoy_by_interpolation(
 
     Args:
         buoy (dict): dictionary containing buoy coordinates 'time',
-        'latitude', and 'longitude'; key names much match exactly.
+        'latitude', and 'longitude' where
+            'time': np.array[datetime64]
+            'latitude': np.array[float]
+            'longitude': np.array[float]
+        All arrays should be sorted and key names much match exactly.
 
         model (dict): dictionary containing models coordinates 'time',
         'latitude', and 'longitude' plus an additional key-value pair
-        containing 'field', the field variable to be matched onto the
-        buoy coordinates; key names much match exactly.
+        containing 'field' (np.array), the field variable to be matched
+        onto the buoy coordinates; key names much match exactly.
+
+        temporal_tolerance (np.timedelta64, optional): maximum allowable
+        time difference between a model and observation point. Defaults
+        to np.timedelta64(30, 'm').
     """
-    t_sort_indices = np.searchsorted(model('time'), buoy('time'))
+    t_sort_indices = np.searchsorted(model['time'], buoy['time'])
 
     field_matches = []
 
-    points = (model('latitude'), model('longitude'))
+    points = (model['latitude'], model['longitude'])
     for i, j in enumerate(t_sort_indices):
 
-        x_i = (buoy('latitude')[i], buoy('longitude')[i]) 
+        time_difference = np.abs(buoy['time'][i] - model['time'][j])
 
-        values_jm1 = model('field').values[j-1] # left
-        values_j = model('field').values[j] # right
+        if time_difference > temporal_tolerance:
+            value = np.nan
+        else:
+            x_i = (buoy['latitude'][i], buoy['longitude'][i])
 
-        bilinear_value_jm1 = scipy.interpolate.interpn(points, values_jm1, x_i, method='linear')
-        bilinear_value_j = scipy.interpolate.interpn(points, values_j, x_i, method='linear')
+            field_values_jm1 = model['field'][j-1] # left
+            field_values_j = model['field'][j] # right
 
-        value = np.interp(buoy('time')[i].astype("float"),
-                        np.array([model('time')[j-1], model('time')[j]]).astype("float"),
-                        np.concatenate([bilinear_value_jm1, bilinear_value_j]))
+            bilinear_value_jm1 = scipy.interpolate.interpn(points,
+                                                           field_values_jm1,
+                                                           x_i, 
+                                                           method='linear',
+                                                           bounds_error=True)
+
+            bilinear_value_j = scipy.interpolate.interpn(points,
+                                                         field_values_j,
+                                                         x_i,
+                                                         method='linear',
+                                                         bounds_error=True)
+
+            value = np.interp(buoy['time'][i].astype("float"),
+                              np.array([model['time'][j-1],
+                                        model['time'][j]]).astype("float"),
+                              np.concatenate([bilinear_value_jm1,
+                                              bilinear_value_j]))
+
         field_matches.append(value)
 
     return np.array(field_matches)
@@ -65,17 +91,21 @@ def match_model_and_buoy_by_nearest(
 
     Args:
         buoy (dict): dictionary containing buoy coordinates 'time',
-        'latitude', and 'longitude'; key names much match exactly.
+        'latitude', and 'longitude' where
+            'time': np.array[datetime64]
+            'latitude': np.array[float]
+            'longitude': np.array[float]
+        All arrays should be sorted and key names much match exactly.
 
         model (dict): dictionary containing models coordinates 'time',
         'latitude', and 'longitude' plus an additional key-value pair
-        containing 'field', the field variable to be matched onto the
-        buoy coordinates; key names much match exactly.
+        containing 'field' (np.array), the field variable to be matched
+        onto the buoy coordinates; key names much match exactly.
 
         temporal_tolerance (np.timedelta64, optional): maximum allowable
         time difference between a model and observation point. Defaults
         to np.timedelta64(30, 'm').
-       
+
         spatial_tolerance (float, optional): maximum allowable spatial
         difference between a model and observation point. Defaults to
         0.25 degrees.
