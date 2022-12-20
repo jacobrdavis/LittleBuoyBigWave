@@ -351,7 +351,7 @@ def match_buoy_and_ERA5(
     match ERA5 and buoy locations
 
     Input:
-        - buoy, Pandas dataframe of buoy data 
+        - buoy, Pandas dataframe of buoy data
             * Note the dataframe must have a datetime index and the location must be stored with 
             'latitude' and 'longitude' as the column names
         - ERA5, an xarray dataset
