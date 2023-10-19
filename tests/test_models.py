@@ -1,5 +1,5 @@
 """
-Unit tests for the models subpackage.
+Unit tests for the models sub-package.
 
 TODO:
     - x
