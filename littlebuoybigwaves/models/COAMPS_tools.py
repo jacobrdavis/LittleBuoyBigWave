@@ -24,6 +24,7 @@ PARAMETER_REGEX = {
     'SWLon': r'SWLon=\s*-?\d+\.*\d*',
 }
 
+
 def read_coamps_wnd_file(wnd_file: str, uniform_parameters: bool = False): #
     """
     Read an Oceanweather WIN file (.wnd) output by COAMPS.
@@ -120,6 +121,7 @@ def read_coamps_wnd_file(wnd_file: str, uniform_parameters: bool = False): #
 
     return coords, fields
 
+
 def _parse_time(time):
     name, value = _parse_parameter(time.group())
     if name == 'DT':
@@ -127,6 +129,7 @@ def _parse_time(time):
     else:
         raise ValueError(f'Incorrect time parameter `{name}`.')
     return value
+
 
 def _parse_header(header):
     """
@@ -161,6 +164,7 @@ def _parse_header(header):
 
     return parameters
 
+
 def _parse_parameter(parameter_string):
     """
     Parse .wnd header parameter into its name and value.
@@ -175,6 +179,7 @@ def _parse_parameter(parameter_string):
     name = parameter_string[0].strip() # see also .partition
     value = parameter_string[1].strip()
     return name, value
+
 
 def _construct_grid_coord(start, step, n_steps):
     """
