@@ -17,7 +17,6 @@ import numpy as np
 from typing import Tuple
 
 
-
 def mean_square_slope(energy: np.ndarray,
                       freq: np.ndarray,
                       freq_range='dynamic',
