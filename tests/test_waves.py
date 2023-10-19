@@ -1,5 +1,5 @@
 """ 
-Unit tests for the waves subpackage.
+Unit tests for the waves sub-package.
 
 TODO:
     - write unit tests for spectral_wave_tools
