@@ -4,7 +4,7 @@
 A collection of frequently used base plots for working with ocean wave data.
 https://towardsdatascience.com/creating-custom-plotting-functions-with-matplotlib-1f4b8eba6aa1
 """
-__all__ = ['comparison_plot', 'scalar_spectrum', 'lineplot_color']
+__all__ = ['spectrogram', 'comparison_plot', 'scalar_spectrum', 'lineplot_color']
 
 import numpy as np
 import seaborn as sns
@@ -19,6 +19,38 @@ from matplotlib.colors import Colormap
 import matplotlib.colorbar as colorbar
 from .colormapping import create_colorbar
 from typing import Tuple
+
+
+def spectrogram(time, frequency, z, ax=None, pcolormesh_kwargs={}):
+
+    if ax is None:
+        ax = plt.gca()
+
+    if z.ndim == 1:
+        raise ValueError(f'Input `z` must have 2 dimensions. Given {z.ndim}.')
+
+    t, f = z.shape
+
+    if frequency.ndim == 1 and time.ndim == 1:
+        frequency = np.tile(frequency, (t, 1))
+        time = np.tile(time, (f, 1)).T
+    elif frequency.shape == z.shape and time.ndim == 1:
+        time = np.tile(time, (f, 1)).T
+    elif frequency.shape == z.shape and time.shape == z.shape:
+        pass
+    else:
+        raise ValueError('`time` and `frequency` shapes do not match `z`.')
+    pcm = ax.pcolormesh(time,
+                        frequency,
+                        z,
+                        **pcolormesh_kwargs)
+
+    return pcm
+
+
+
+
+
 
 def comparison_plot(
     X1: np.ndarray, 
@@ -113,11 +145,14 @@ def lineplot_color(
     Y: np.ndarray, 
     z: np.ndarray,
     cmap: Colormap = plt.get_cmap('inferno'),
+    norm: plt.Normalize = None,
     vmin: float = None,
     vmax: float = None,
     ax: Axes = None,
+    cax: Axes = None,
     plt_kwargs: dict = {},
     cbar_kwargs: dict = {},
+    create_cbar: bool = True
 )-> Tuple[plt.Axes, colorbar.Colorbar]:
     """
     _summary_
@@ -130,24 +165,35 @@ def lineplot_color(
         - Y (np.ndarray), _description_
         - z (np.ndarray), _description_
         - cmap (Colormap, optional), _description_; defaults to plt.get_cmap('inferno').
+        - norm (plt.Normalize), _description_.
         - vmin (float, optional), _description_; defaults to None.
         - vmax (float, optional), _description_; defaults to None.
         - ax (Axes, optional), _description_; defaults to None.
         - plt_kwargs (dict, optional), _description_; defaults to {}.
         - cbar_kwargs (dict, optional), _description_; defaults to {}.
-
+        - create_cbar (bool, optional), _description_; defaults to True.
+        
     Returns:
         - (plt.Axes, colorbar.Colorbar), axes and colorbar
     """
+
     if vmin is None:
         vmin = np.min(z)
     if vmax is None:
         vmax = np.max(z)
+    if norm is None:
+        norm = plt.Normalize(vmin=vmin, vmax=vmax)
     if ax is None:
         ax = plt.gca()
+    if cax is None:
+        cax = ax
 
-    cbar, norm = create_colorbar(cmap, vmin, vmax, ax, **cbar_kwargs)
+    if create_cbar:
+        cbar = create_colorbar(cmap, norm, cax, **cbar_kwargs)
+    else:
+        cbar = None
 
+    #TODO: vectorize using line collection
     for Xi, Yi, zi in zip(X, Y, z):
         ax.plot(
             Xi,

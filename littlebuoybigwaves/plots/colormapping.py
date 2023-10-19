@@ -50,8 +50,7 @@ def truncate_colormap(
 
 def create_colorbar(
     cmap: colors.Colormap,
-    vmin: float,
-    vmax: float,
+    norm: plt.Normalize,
     ax: Axes = None,
     **cbar_kwargs,
 )-> Tuple[colorbar.Colorbar, colors.Normalize]:
@@ -70,7 +69,7 @@ def create_colorbar(
     if ax is None:
         ax = plt.gca()
 
-    norm = plt.Normalize(vmin=vmin, vmax=vmax)
-    smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm); smap.set_array([])
+    smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    smap.set_array([])
     cbar = plt.colorbar(smap, ax=ax, **cbar_kwargs)
-    return cbar, norm
+    return cbar
