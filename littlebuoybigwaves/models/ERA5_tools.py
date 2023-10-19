@@ -14,7 +14,7 @@ For information on setting up and using the API, visit:
 """
 __all__ = [
     'read_ERA5_gribfile',
-    'generate_ERA5_API_request_dict', 
+    'generate_ERA5_API_request_dict',
     'generate_ERA5_API_request_filename',
     'generate_ERA5_daterange',
     'ERA5_API_request',
@@ -33,7 +33,7 @@ from typing import Iterable, List
 import cdsapi
 import json
 from datetime import datetime, timedelta
-import cfgrib
+# import cfgrib
 import warnings
 from littlebuoybigwaves.geo import get_extent
 
