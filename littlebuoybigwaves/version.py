@@ -70,7 +70,6 @@ REQUIRES = [
     "pandas",
     "requests",
     "scipy",
-    "seaborn",
     "xarray",
 ]
 PYTHON_REQUIRES = ">= 3.7"

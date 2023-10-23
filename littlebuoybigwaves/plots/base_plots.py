@@ -7,7 +7,6 @@ https://towardsdatascience.com/creating-custom-plotting-functions-with-matplotli
 __all__ = ['spectrogram', 'comparison_plot', 'scalar_spectrum', 'lineplot_color']
 
 import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 import matplotlib as mpl
@@ -76,7 +75,7 @@ def comparison_plot(
     if ax is None:
         ax = plt.gca()
 
-    sns.scatterplot(
+    ax.scatter(
         x = X1,
         y = X2,
         **plt_kwargs,
