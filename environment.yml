@@ -1,0 +1,15 @@
+name: littlebuoybigwaves
+channels:
+  - defaults
+dependencies:
+  - geopandas,
+  - matplotlib,
+  - numpy,
+  - pandas,
+  - requests,
+  - scipy,
+  - seaborn,
+  - wget,
+  - xarray,
+  - pip:
+    - microswifttelemetry

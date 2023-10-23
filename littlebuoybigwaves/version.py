@@ -64,14 +64,12 @@ MICRO = _version_micro
 VERSION = __version__
 PACKAGE_DATA = {'littlebuoybigwaves': [pjoin('data', '*')]} # or {'': ['data/x', 'data/x']}
 REQUIRES = [
-    "boto3",
-    "botocore",
-    "cdsapi",
+    "geopandas",
     "matplotlib",
-    "Nio",
     "numpy",
     "pandas",
-    "python_dateutil",
+    "requests",
+    "scipy",
     "seaborn",
     "wget",
     "xarray",
