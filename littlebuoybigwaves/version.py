@@ -71,7 +71,6 @@ REQUIRES = [
     "requests",
     "scipy",
     "seaborn",
-    "wget",
     "xarray",
 ]
 PYTHON_REQUIRES = ">= 3.7"
