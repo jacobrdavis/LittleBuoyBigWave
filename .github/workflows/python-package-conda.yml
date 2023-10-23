@@ -31,4 +31,4 @@ jobs:
     - name: Test with unittest
       run: |
         cd littlebuoybigwaves
-        python -m unittest
+        python -m unittest tests/test_*
