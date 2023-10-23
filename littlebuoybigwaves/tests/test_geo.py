@@ -1,4 +1,4 @@
-""" 
+"""
 Unit tests for the geo sub-package.
 """
 
@@ -6,7 +6,8 @@ import unittest
 
 import numpy as np
 
-from littlebuoybigwaves.geo import geodesy as geo
+# from littlebuoybigwaves.geo import geodesy as geo
+import geo
 
 
 class TestGeographyTools(unittest.TestCase):
@@ -129,6 +130,5 @@ class TestGeographyTools(unittest.TestCase):
         np.testing.assert_allclose(expected_bearing, bearing, rtol=1e-05)
 
 
-
 if __name__ == "__main__":
-     unittest.main()
+    unittest.main()

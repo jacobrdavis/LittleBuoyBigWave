@@ -10,9 +10,7 @@ TODO:
 import unittest
 
 import numpy as np
-
-from littlebuoybigwaves.waves import general_wave_tools as gwt
-from littlebuoybigwaves.waves import spectral_wave_tools as swt
+import waves
 
 
 class TestSpectralWaveTools(unittest.TestCase):
@@ -61,7 +59,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check for proper output length. For 1-dimensional energy and
         frequency arrays, the mean square slope is a single value.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq)
         self.assertEqual(mss.ndim, 0)
         self.assertEqual(bw.ndim, 0)
@@ -72,7 +70,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         """
         Check for proper output type.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq)
         self.assertIsInstance(mss, float)
         self.assertIsInstance(bw, float)
@@ -84,7 +82,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the total mss value for the sample arrays. Cross 
         validated with Jim Thomson's SWIFT codes.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq,
                                                             freq_range='total',
                                                             norm=None)
@@ -97,7 +95,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the f-normalized total mss value for the sample arrays. 
         Cross validated with Jim Thomson's SWIFT codes.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq,
                                                             freq_range='total',
                                                             norm='frequency')
@@ -110,7 +108,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the dir-normalized total mss value for the sample arrays. 
         Cross validated with Jim Thomson's SWIFT codes.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq,
                                                             freq_range='total',
                                                             norm='direction',
@@ -124,7 +122,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the spread-normalized total mss value for the sample arrays. 
         Cross validated with Jim Thomson's SWIFT codes.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq,
                                                             freq_range='total',
                                                             norm='direction',
@@ -138,7 +136,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the f- and spread-normalized total mss value for the
         sample arrays. Cross validated with Jim Thomson's SWIFT codes.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq,
                                                             freq_range='total',
                                                             norm=['frequency', 'spread'],
@@ -152,7 +150,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the f- and dir-normalized total mss value for the
         sample arrays. Cross validated with Jim Thomson's SWIFT codes.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq,
                                                             freq_range='total',
                                                             norm=['frequency', 'direction'],
@@ -166,7 +164,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the dynamic mss value for the sample arrays. Cross 
         validated with Jim Thomson's SWIFT codes.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq,
                                                             freq_range='dynamic',
                                                             norm=None)
@@ -179,7 +177,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the f-normalized dynamic mss value for the sample arrays.  
         Cross validated with Jim Thomson's SWIFT codes.
         """
-        mss, bw, freq_range_logical = swt.mean_square_slope(self.sample_energy,
+        mss, bw, freq_range_logical = waves.mean_square_slope(self.sample_energy,
                                                             self.sample_freq,
                                                             freq_range='dynamic',
                                                             norm='frequency')
@@ -197,7 +195,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         energy_nd = np.tile(self.sample_energy, (nd,1))
         freq_nd = np.tile(self.sample_freq, (nd,1))
 
-        mss, bw, freq_range_logical = swt.mean_square_slope(energy_nd,
+        mss, bw, freq_range_logical = waves.mean_square_slope(energy_nd,
                                                             freq_nd,
                                                             freq_range='dynamic',
                                                             norm='frequency')
@@ -211,8 +209,7 @@ class TestSpectralWaveTools(unittest.TestCase):
                         np.repeat(0.117, nd, axis=0),
                         rtol=1e-02,
                         atol=1e-03))
-        
-        
+
     def test_mean_square_slope_ndarray_multinorm(self):
         """
         Test of ndarray functionality for mean_square_slope function. 
@@ -225,7 +222,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         dir_nd = np.tile(self.sample_direction, (nd,1))
         spread_nd = np.tile(self.sample_spread, (nd,1))
 
-        mss, bw, freq_range_logical = swt.mean_square_slope(energy_nd,
+        mss, bw, freq_range_logical = waves.mean_square_slope(energy_nd,
                                                             freq_nd,
                                                             freq_range='total',
                                                             norm=['frequency', 'spread'],
@@ -248,7 +245,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the energy period value for the sample arrays. Cross
         validated with Jim Thomson's SWIFT codes.
         """
-        T_e = swt.energy_period(self.sample_energy,
+        T_e = waves.energy_period(self.sample_energy,
                                 self.sample_freq,
                                 returnAsFreq=False)
 
@@ -259,7 +256,7 @@ class TestSpectralWaveTools(unittest.TestCase):
         Check the energy frequency value for the sample arrays. Cross
         validated with Jim Thomson's SWIFT codes.
         """
-        f_e = swt.energy_period(self.sample_energy,
+        f_e = waves.energy_period(self.sample_energy,
                                 self.sample_freq,
                                 returnAsFreq=True)
 

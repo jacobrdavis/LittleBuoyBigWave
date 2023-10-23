@@ -12,9 +12,10 @@ from unittest.mock import patch, mock_open
 
 import numpy as np
 
-from littlebuoybigwaves.models import gfs_tools as gfs
-from littlebuoybigwaves.models import era5_tools as era5
-from littlebuoybigwaves.models import coamps_tools as coamps
+# from littlebuoybigwaves.models import gfs_tools as gfs
+# from littlebuoybigwaves.models import era5_tools as era5
+# from littlebuoybigwaves.models import coamps_tools as coamps
+import models
 
 # class TestGfsTools(unittest.TestCase):
 #     """ Unit tests for gfs tools submodule """
@@ -86,10 +87,10 @@ class TestCoampsTools(unittest.TestCase):
         output latitude and longitude coordinates will have the same
         length as the time coordinate.
         """
-        with patch("builtins.open",\
-                              mock_open(read_data=self.wnd_data)) as mock_file:
-            
-            coords, fields = coamps.read_coamps_wnd_file(
+        with patch("builtins.open",
+                            mock_open(read_data=self.wnd_data)) as mock_file:
+
+            coords, fields = models.read_coamps_wnd_file(
                 mock_file,
                 uniform_parameters=False
             )
@@ -130,10 +131,10 @@ class TestCoampsTools(unittest.TestCase):
         output latitude and longitude coordinates will have the shapes
         (iLong,) and (iLat,).
         """
-        with patch("builtins.open",\
+        with patch("builtins.open",
                               mock_open(read_data=self.wnd_data)) as mock_file:
-            
-            coords, fields = coamps.read_coamps_wnd_file(
+
+            coords, fields = models.read_coamps_wnd_file(
                 mock_file,
                 uniform_parameters=True
             )
