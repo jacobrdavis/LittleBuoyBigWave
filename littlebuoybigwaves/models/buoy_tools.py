@@ -58,7 +58,7 @@ def match_model_and_buoy_by_interpolation(
 
             bilinear_value_jm1 = scipy.interpolate.interpn(points,
                                                            field_values_jm1,
-                                                           x_i, 
+                                                           x_i,
                                                            method='linear',
                                                            bounds_error=True)
 
