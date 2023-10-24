@@ -53,7 +53,7 @@ def great_circle_pathwise(
     latitude: np.ndarray,
     earth_radius: float = 6378.137,
     mod_bearing: bool = True
-) -> Tuple:
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Computes the great circle distance (km) and true fore bearing (deg) along a
     path using adjacent values in `longitude` and `latitude`.
@@ -110,32 +110,11 @@ def great_circle_pathwise(
     latitude_a = latitude[0:-1]
     latitude_b = latitude[1:]
 
-    #TODO: everything past here should really be put into the pairwise fn!
-    # Convert decimal degrees to radians
-    longitude_a_rad, latitude_a_rad = map(np.radians, [longitude_a, latitude_a])
-    longitude_b_rad, latitude_b_rad = map(np.radians, [longitude_b, latitude_b])
-
-    # Difference longitude and latitude
-    longitude_difference = longitude_b_rad - longitude_a_rad
-    latitude_difference = latitude_b_rad - latitude_a_rad
-
-    # Haversine formula
-    a_1 = np.sin(latitude_difference / 2) ** 2
-    a_2 = np.cos(latitude_a_rad)
-    a_3 = np.cos(latitude_b_rad)
-    a_4 = np.sin(longitude_difference / 2) ** 2
-    c = 2 * np.arcsin(np.sqrt(a_1 + a_2 * a_3 * a_4))
-    distance_km = earth_radius * c
-
-    # True bearing
-    bearing_num = np.cos(latitude_b_rad) * np.sin(-longitude_difference)
-    bearing_den_1 = np.cos(latitude_a_rad) * np.sin(latitude_b_rad)
-    bearing_den_2 = - np.sin(latitude_a_rad) * np.cos(latitude_b_rad) * np.cos(longitude_difference)
-    bearing_deg = -np.degrees(np.arctan2(bearing_num, bearing_den_1 + bearing_den_2))
-
-    if mod_bearing:
-        bearing_deg = bearing_deg % 360
-
+    # Pass pairs the core pairwise function.
+    distance_km, bearing_deg = great_circle_pairwise(longitude_a, latitude_a,
+                                                     longitude_b, latitude_b,
+                                                     earth_radius=earth_radius,
+                                                     mod_bearing=mod_bearing)
     return distance_km, bearing_deg
 
 
@@ -151,7 +130,7 @@ def great_circle_pairwise(
     latitude_b: np.ndarray,
     earth_radius: float = 6378.137,
     mod_bearing: bool = True
-) -> Tuple:
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Computes the great circle distance (km) and true fore bearing (deg) between
     pairs of observations in input arrays `longitude_a` and `longitude_b` and
@@ -187,23 +166,28 @@ def great_circle_pairwise(
     >> #TODO:
     ```
     """
-
-    # convert decimal degrees to radians
+    # Convert decimal degrees to radians
     longitude_a_rad, latitude_a_rad = map(np.radians, [longitude_a, latitude_a])
     longitude_b_rad, latitude_b_rad = map(np.radians, [longitude_b, latitude_b])
 
-    # haversine formula
-    dlon = longitude_b_rad - longitude_a_rad
-    dlat = latitude_b_rad - latitude_a_rad
-    a = np.sin(dlat / 2) ** 2 + np.cos(latitude_a_rad) * np.cos(latitude_b_rad) * np.sin(dlon / 2) ** 2
-    c = 2 * np.arcsin(np.sqrt(a))
+    # Difference longitude and latitude
+    longitude_difference = longitude_b_rad - longitude_a_rad
+    latitude_difference = latitude_b_rad - latitude_a_rad
 
+    # Haversine formula
+    a_1 = np.sin(latitude_difference / 2) ** 2
+    a_2 = np.cos(latitude_a_rad)
+    a_3 = np.cos(latitude_b_rad)
+    a_4 = np.sin(longitude_difference / 2) ** 2
+    c = 2 * np.arcsin(np.sqrt(a_1 + a_2 * a_3 * a_4))
     distance_km = earth_radius * c
 
-    # bearing
-    S = np.cos(latitude_b_rad)*np.sin(-dlon)
-    C = np.cos(latitude_a_rad)*np.sin(latitude_b_rad) - np.sin(latitude_a_rad)*np.cos(latitude_b_rad)*np.cos(dlon)
-    bearing_deg = (-np.degrees(np.arctan2(S, C)))
+    # True bearing
+    bearing_num = np.cos(latitude_b_rad) * np.sin(-longitude_difference)
+    bearing_den_1 = np.cos(latitude_a_rad) * np.sin(latitude_b_rad)
+    bearing_den_2 = - np.sin(latitude_a_rad) * np.cos(latitude_b_rad) * np.cos(longitude_difference)
+    bearing_deg = -np.degrees(np.arctan2(bearing_num, bearing_den_1 + bearing_den_2))
+
     if mod_bearing:
         bearing_deg = bearing_deg % 360
 
