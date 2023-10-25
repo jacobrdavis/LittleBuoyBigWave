@@ -10,7 +10,7 @@ from typing import Tuple
 import pandas as pd
 import numpy as np
 
-from geo import haversine_distance
+from littlebuoybigwaves.geo import haversine_distance
 
 KMPH_TO_MPS = 0.277778  # m/s / km/hr
 

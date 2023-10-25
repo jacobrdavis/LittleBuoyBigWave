@@ -18,9 +18,11 @@ TODO:
 """
 
 __all__ = [
-    "euclidean_dist",
+    "euclidean_distance",
     "haversine_distance",
     "haversine_distance_pairwise",
+    "great_circle_pathwise",
+    "great_circle_pairwise",
     "destination_coordinates",
     "reciprocal_bearing",
     "get_extent",
@@ -31,26 +33,30 @@ from typing import Tuple
 import numpy as np
 
 
-def euclidean_dist(x1,y1,x2,y2):
+def euclidean_distance(x1, y1, x2, y2):
     """
     Compute the euclidean distance b/t two points
 
-    """ 
-    dx = np.subtract(x2,x1)
-    dy = np.subtract(y2,y1)
-    dist=np.sqrt(np.square(dx)+np.square(dy))
-    return dist
-
-
-def haversine_distance(
-    longitude: np.array,
-    latitude: np.array,
-    earth_radius: float = 6378.137, # 6371,  # 6378.137 km,
-    mod_bearing: bool = True
-) -> Tuple:
     """
-    Computes the great circle distance (km) and true fore bearing (deg) between
-    adjacent pairs of observations in input arrays `longitude` and `latitude`.
+    dx = np.subtract(x2, x1)
+    dy = np.subtract(y2, y1)
+    return np.sqrt(np.square(dx)+np.square(dy))
+
+
+def haversine_distance(longitude, latitude, **kwargs):
+    """ Alias to renamed function `great_circle_pathwise` """
+    return great_circle_pathwise(longitude, latitude, **kwargs)
+
+
+def great_circle_pathwise(
+    longitude: np.ndarray,
+    latitude: np.ndarray,
+    earth_radius: float = 6378.137,
+    mod_bearing: bool = True
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Computes the great circle distance (km) and true fore bearing (deg) along a
+    path using adjacent values in `longitude` and `latitude`.
 
     For two longitude and latitude pairs, the great circle distance is the
     shortest distance between the two points along the Earth's surface. This
@@ -104,6 +110,62 @@ def haversine_distance(
     latitude_a = latitude[0:-1]
     latitude_b = latitude[1:]
 
+    # Pass pairs the core pairwise function.
+    distance_km, bearing_deg = great_circle_pairwise(longitude_a, latitude_a,
+                                                     longitude_b, latitude_b,
+                                                     earth_radius=earth_radius,
+                                                     mod_bearing=mod_bearing)
+    return distance_km, bearing_deg
+
+
+def haversine_distance_pairwise(longitude_a, latitude_a, longitude_b, latitude_b, **kwargs):
+    """ Alias to renamed function `great_circle_pairwise` """
+    return great_circle_pairwise(longitude_a, latitude_a, longitude_b, latitude_b, **kwargs)
+
+
+def great_circle_pairwise(
+    longitude_a: np.ndarray,
+    latitude_a: np.ndarray,
+    longitude_b: np.ndarray,
+    latitude_b: np.ndarray,
+    earth_radius: float = 6378.137,
+    mod_bearing: bool = True
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Computes the great circle distance (km) and true fore bearing (deg) between
+    pairs of observations in input arrays `longitude_a` and `longitude_b` and
+    `latitude_a` and `latitude_b`.
+
+    For two longitude and latitude pairs, the great circle distance is the
+    shortest distance between the two points along the Earth's surface. This
+    distance is calculated using the Haversine formula. The instances in
+    `longitude_a` and `latitude_a` are designated as point `a`; the instances
+    in `longitude_b` and `latitude_b` then form point `b`. The true fore
+    bearing is the bearing, measured from true north, of `b` as seen from `a`.
+
+    Note:
+        When given `latitude_a/b` and `longitude_a/b` of shape (n,), n > 1,
+        the great circle distance and fore bearing will be calculated between
+        `a` and `b` entries such that the returned arrays will be of shape
+        (n,). To compute the great circle distance and bearings between
+        adjacent coordinates of single longitude and latitude arrays (i.e.,
+        along a trajectory), use `great_circle_pathwise`.
+
+    Args:
+        longitude_a (np.array): of shape (n,) in units of decimal degrees
+        latitude (np.array): of shape (n,) in units of decimal degrees
+        earth_radius (float, optional): earth's radius in units of km. Defaults to 6378.137 km (WGS-84)
+        mod_bearing (bool, optional): return bearings modulo 360 deg. Defaults to True.
+
+    Returns:
+        Tuple[np.array, np.array]: great circle distances (in km) and true fore
+        bearings between adjacent longitude and latitude pairs; shape (n,)
+
+    Example: A trajectory along the Earth's equator.
+    ```
+    >> #TODO:
+    ```
+    """
     # Convert decimal degrees to radians
     longitude_a_rad, latitude_a_rad = map(np.radians, [longitude_a, latitude_a])
     longitude_b_rad, latitude_b_rad = map(np.radians, [longitude_b, latitude_b])
@@ -129,74 +191,6 @@ def haversine_distance(
     if mod_bearing:
         bearing_deg = bearing_deg % 360
 
-    return distance_km, bearing_deg
-
-
-def haversine_distance_pairwise(
-    longitude_a: np.array,
-    latitude_a: np.array,
-    longitude_b: np.array,
-    latitude_b: np.array,
-    earth_radius: float = 6378.137,
-    mod_bearing: bool = True
-) -> Tuple:
-    """
-    Computes the great circle distance (km) and true fore bearing (deg) between
-    pairs of observations in input arrays `longitude_a` and `longitude_b` and
-    `latitude_a` and `latitude_b`.
-
-    For two longitude and latitude pairs, the great circle distance is the
-    shortest distance between the two points along the Earth's surface. This
-    distance is calculated using the Haversine formula. The instances in
-    `longitude_a` and `latitude_a` are designated as point `a`; the instances
-    in `longitude_b` and `latitude_b` then form point `b`. The true fore
-    bearing is the bearing, measured from true north, of `b` as seen from `a`.
-
-    Note:
-        When given `latitude_a/b` and `longitude_a/b` of shape (n,), n > 1,
-        the great circle distance and fore bearing will be calculated between
-        `a` and `b` entries such that the returned arrays will be of shape
-        (n,). To compute the great circle distance and bearings between
-        adjacent coordinates of single longitude and latitude arrays (i.e.,
-        along a trajectory), use `haversine_distance`.
-
-    Args:
-        longitude_a (np.array): of shape (n,) in units of decimal degrees
-        latitude (np.array): of shape (n,) in units of decimal degrees
-        earth_radius (float, optional): earth's radius in units of km. Defaults to 6378.137 km (WGS-84)
-        mod_bearing (bool, optional): return bearings modulo 360 deg. Defaults to True.
-
-    Returns:
-        Tuple[np.array, np.array]: great circle distances (in km) and true fore
-        bearings between adjacent longitude and latitude pairs; shape (n,)
-
-    Example: A trajectory along the Earth's equator.
-    ```
-    >> #TODO:
-    ```
-    """
-
-    # convert decimal degrees to radians
-    longitude_a_rad, latitude_a_rad = map(np.radians, [longitude_a, latitude_a])
-    longitude_b_rad, latitude_b_rad = map(np.radians, [longitude_b, latitude_b])
-
-    # haversine formula
-    dlon = longitude_b_rad - longitude_a_rad
-    dlat = latitude_b_rad - latitude_a_rad
-    a = np.sin(dlat / 2) ** 2 + np.cos(latitude_a_rad) * np.cos(latitude_b_rad) * np.sin(dlon / 2) ** 2
-    c = 2 * np.arcsin(np.sqrt(a))
-
-    distance_km = earth_radius * c
-
-    # bearing
-    S = np.cos(latitude_b_rad)*np.sin(-dlon)
-    C = np.cos(latitude_a_rad)*np.sin(latitude_b_rad) - np.sin(latitude_a_rad)*np.cos(latitude_b_rad)*np.cos(dlon)
-    bearing_deg = (-np.degrees(np.arctan2(S, C)))
-    if mod_bearing:
-        bearing_deg = bearing_deg % 360
-
-
-    # validation from R. Bullock: dist,bearing = haversine_distance(105.2833,40.0167,-137.65,-33.9333)
     return distance_km, bearing_deg
 
 
