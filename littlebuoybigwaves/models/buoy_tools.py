@@ -41,6 +41,11 @@ def match_model_and_buoy_by_interpolation(
     """
     t_sort_indices = np.searchsorted(model['time'], buoy['time'])
 
+    # Adjust the sort indices so that the final index is not greater
+    # than the length of the array.  If so, replace with the last index.
+    n = model['time'].size
+    t_sort_indices[t_sort_indices >= n] = n - 1
+
     field_matches = []
 
     points = (model['latitude'], model['longitude'])
