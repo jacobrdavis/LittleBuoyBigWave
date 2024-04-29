@@ -1,3 +1,11 @@
+"""
+Utilities module for LittleBuoyBigWaves.
+"""
+
+__all__ = [
+    "get_config",
+]
+
 import toml
 
 
