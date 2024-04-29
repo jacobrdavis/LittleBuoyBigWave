@@ -8,6 +8,9 @@ __all__ = [
     'energy_period',
     'spectral_moment',
     'sig_wave_height',
+    'direction',
+    'directional_spread',
+    'moment_weighted_mean',
 ]
 
 import warnings
@@ -17,12 +20,13 @@ import numpy as np
 from typing import Tuple
 
 
-def mean_square_slope(energy: np.ndarray,
-                      freq: np.ndarray,
-                      freq_range='dynamic',
-                      norm=None,
-                      direction=None,
-                      spread=None
+def mean_square_slope(
+    energy: np.ndarray,
+    freq: np.ndarray,
+    freq_range='dynamic',
+    norm=None,
+    direction=None,
+    spread=None,
 ) -> Tuple:
     """
     Compute mean square slope (mss) as 4th moment of spectral tail.
@@ -121,7 +125,7 @@ def mean_square_slope(energy: np.ndarray,
             ' spread array provided. Please provide input for `spread`.'))
 
     fourth_moment =spectral_moment(energy[freq_range_logical],
-                                   freq=freq[freq_range_logical],
+                                   frequency=freq[freq_range_logical],
                                    n=4)
     mss = ((2*np.pi)**4*fourth_moment)/(ACC_GRAV**2) # (-)
     bandwidth = np.ptp(freq[freq_range_logical])
@@ -133,6 +137,7 @@ def mean_square_slope(energy: np.ndarray,
         pass
 
     return mss, bandwidth, freq_range_logical
+
 
 def _handle_mean_square_slope_ndarray(energy, freq, direction=None, spread=None, **kwargs):
     """
@@ -195,7 +200,8 @@ def _handle_mean_square_slope_ndarray(energy, freq, direction=None, spread=None,
             freq_range_logical.append(out[2])
 
     return np.array(mss), np.array(bandwidth), np.array(freq_range_logical)
-    
+
+
 def energy_period(energy, freq, returnAsFreq = False):
     """
     Function to compute energy period (centroid period)
@@ -232,32 +238,51 @@ def energy_period(energy, freq, returnAsFreq = False):
         warnings.warn('`energy` is empty or invalid; output assigned as NaN.')
     return Te
 
-def spectral_moment(energy, freq=None, n=0):
-    """
-    Function to compute 'nth' spectral moment
-    
-    Input:
-        - energy, input array of energy densities ([n,1] arr OR [n,m] ndarr)
-        - freq, input array of frequencies ([n,1] arr OR [n,m] ndarr)
-        - n, moment ([1,] int)
-       
-    Output:
-        - mn, nth spectral moment ([1,] float)
-            * if energy is empty or invalid, mn is assigned a NaN
 
-    Example:
+# def spectral_moment(energy, freq=None, n=0):
+#     """
+#     Function to compute 'nth' spectral moment
     
-    Compute 4th spectral moment:
-        m4 = spectral_moment(energy, freq, n=4)
-    """
-    if hasattr(energy, '__len__') and (not isinstance(energy, str)):
-        # m_n = np.trapz(np.multiply(energy,freq**n),x=freq)
-        fn = np.power(freq,n)
-        mn = np.trapz(np.multiply(energy,fn),x=freq)
+#     Input:
+#         - energy, input array of energy densities ([n,1] arr OR [n,m] ndarr)
+#         - freq, input array of frequencies ([n,1] arr OR [n,m] ndarr)
+#         - n, moment ([1,] int)
+       
+#     Output:
+#         - mn, nth spectral moment ([1,] float)
+#             * if energy is empty or invalid, mn is assigned a NaN
+
+#     Example:
+    
+#     Compute 4th spectral moment:
+#         m4 = spectral_moment(energy, freq, n=4)
+#     """
+#     if hasattr(energy, '__len__') and (not isinstance(energy, str)):
+#         # m_n = np.trapz(np.multiply(energy,freq**n),x=freq)
+#         fn = np.power(freq,n)
+#         mn = np.trapz(np.multiply(energy,fn),x=freq)
         
-    else:
-        mn = np.NaN
-    return mn
+#     else:
+#         mn = np.NaN
+#     return mn
+
+
+def spectral_moment(energy_density, frequency, n):
+    """
+    Compute the 'nth' spectral moment.
+
+    Integrates along the last axis.
+    """
+    frequency_n = frequency ** n
+    moment_n = np.trapz(energy_density * frequency_n, x=frequency, axis=-1)
+    return moment_n
+
+
+def moment_weighted_mean(arr, energy_density, frequency, n):
+    moment_n = spectral_moment(energy_density=energy_density, frequency=frequency, n=n)
+    weighted_moment_n = spectral_moment(energy_density=energy_density * arr, frequency=frequency, n=n)
+    return weighted_moment_n / moment_n
+
 
 def sig_wave_height(energy, freq):
     """
@@ -289,6 +314,27 @@ def sig_wave_height(energy, freq):
     else:
         Hs = np.NaN
     return Hs
+
+#TODO: option to use a2 b2?
+def direction(a1, b1):
+    """TODO: from Spotter Technical Reference Manual"""
+    return (270 - np.rad2deg(np.arctan2(b1, a1))) % 360
+
+#TODO: option to use a2 b2?
+def directional_spread(a1, b1):
+    """
+    Calculate directional spreading  by frequency bin using the lowest-
+    order directional moments.
+
+    Args:
+        a1 (np.ndarray): normalized spectral directional moment (+E)
+        b1 (np.ndarray): normalized spectral directional moment (+N)
+
+    Returns:
+       np.ndarray: directional spread in radians.
+    """
+    directional_spread_rad = np.sqrt(2 * (1 - np.sqrt(a1**2 + b1**2)))
+    return directional_spread_rad #np.rad2deg(directional_spread_rad)
 
 
 #%% testing

@@ -17,10 +17,13 @@ def match_model_and_buoy_by_interpolation(
     buoy: dict,
     model: dict,
     temporal_tolerance: np.timedelta64 = np.timedelta64(30, 'm'),
+    **interpn_kwargs,
 ):
     """
     Match model and buoy observations using linear interpolation in time
     and bilinear interpolation in space.
+
+    Note: the `time` arrays in both `buoy` and `model` must be sorted.
 
     Args:
         buoy (dict): dictionary containing buoy coordinates 'time',
@@ -38,7 +41,17 @@ def match_model_and_buoy_by_interpolation(
         temporal_tolerance (np.timedelta64, optional): maximum allowable
         time difference between a model and observation point. Defaults
         to np.timedelta64(30, 'm').
+
+        **interpn_kwargs: Remaining keyword arguments passed to scipy.interpn.
+
+    Returns:
+        np.ndarray: interpolated field values for each time in `buoy`.
     """
+    if 'method' not in interpn_kwargs:
+        interpn_kwargs['method'] = 'linear'
+    if 'bounds_error' not in interpn_kwargs:
+        interpn_kwargs['bounds_error'] = True
+
     t_sort_indices = np.searchsorted(model['time'], buoy['time'])
 
     # Adjust the sort indices so that the final index is not greater
@@ -58,20 +71,18 @@ def match_model_and_buoy_by_interpolation(
         else:
             x_i = (buoy['latitude'][i], buoy['longitude'][i])
 
-            field_values_jm1 = model['field'][j-1] # left
-            field_values_j = model['field'][j] # right
+            field_values_jm1 = model['field'][j-1]  # left
+            field_values_j = model['field'][j]  # right
 
             bilinear_value_jm1 = scipy.interpolate.interpn(points,
                                                            field_values_jm1,
                                                            x_i,
-                                                           method='linear',
-                                                           bounds_error=True)
+                                                           **interpn_kwargs)
 
             bilinear_value_j = scipy.interpolate.interpn(points,
                                                          field_values_j,
                                                          x_i,
-                                                         method='linear',
-                                                         bounds_error=True)
+                                                         **interpn_kwargs)
 
             value = np.interp(buoy['time'][i].astype("float"),
                               np.array([model['time'][j-1],
