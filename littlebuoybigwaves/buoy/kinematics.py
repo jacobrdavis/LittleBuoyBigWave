@@ -1,4 +1,9 @@
-"""TODO module docstr"""
+"""TODO: module docstr"""
+
+
+# TODO:
+# - rename/unify functions and variables
+
 
 __all__ = [
     "drift_speed_and_direction",

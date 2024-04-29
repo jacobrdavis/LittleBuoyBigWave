@@ -1,11 +1,10 @@
 """
-A collection of general water wave functions.
-
-#TODO:
-- Tests of dispersion functions
-
-
+General water wave functions.
 """
+
+# TODO:
+# - unit tests
+# - rename/unify functions and variables
 
 __all__ = [
     'dispersion',

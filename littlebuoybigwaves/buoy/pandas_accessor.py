@@ -3,6 +3,13 @@ Core module for LittleBuoyBigWaves Pandas interface.  Contains Dataframe
 accessors and associated methods.
 """
 
+
+# TODO:
+# - Many methods can be vectorized if all frequencies have the same shape...
+#   Might consider adding a check for uniform frequency arrays and subsequent
+#   pathways in methods.
+
+
 __all__ = [
     "BuoyDataFrameAccessor",
 ]
@@ -16,47 +23,7 @@ import xarray as xr
 
 from littlebuoybigwaves import waves, buoy
 from utilities import get_config
-# from . import utilities
 
-#TODO: can be vectorized if all frequencies have the same shape...
-# Might consider adding a check for uniform frequency arrays and subsequent
-# pathways in methods.
-
-default_idxs = types.SimpleNamespace(
-    time='time',
-    id='id',
-)
-#TODO: do not neccessarily need all, maybe just the basics used to validate?
-default_cols = types.SimpleNamespace(
-    time='time',
-    longitude='longitude',
-    latitude='latitude',
-    significant_height='significant_height',
-    peak_period='peak_period',
-    peak_direction='peak_direction',
-    peak_directional_spread='peak_directional_spread',
-    mean_period='mean_period',  #TODO: energy-weighted
-    mean_direction='mean_direction',
-    mean_directional_spread='mean_directional_spread',
-    energy_density='energy_density',
-    frequency='frequency',
-    a1='a1',
-    b1='b1',
-    a2='a2',
-    b2='b2',
-    direction='direction',  #TODO: consider renaming to wave_direction
-    directional_spread='directional_spread',  #TODO: consider renaming to wave_directional_spread
-    mean_square_slope='mean_square_slope',
-    wave_check_factor='wave_check_factor',
-    wavenumber='wavenumber',
-    depth='depth',
-    drift_speed='drift_speed',
-    drift_direction='drift_direction',
-    absolute_frequency='absolute_frequency',
-    # doppler_shift='doppler_shift',
-    u_dot_k='u_dot_k',
-    wave_drift_alignment='wave_drift_alignment',
-)
 
 config = get_config()
 config_idx = types.SimpleNamespace(**config['idxs'])
@@ -68,9 +35,9 @@ class BuoyDataFrameAccessor:
     def __init__(self, pandas_obj):
         self._validate(pandas_obj)
         self._obj = pandas_obj
-        self._cols = config_cols  #TODO: probably need a method to update and rename
+        self._cols = config_cols  # TODO: probably need a method to update and rename
         self._idxs = config_idx
-        # self._spectral_variables = None #TODO: do not want to cache
+        # self._spectral_variables = None # TODO: do not want to cache
 
     @staticmethod
     def _validate(obj):

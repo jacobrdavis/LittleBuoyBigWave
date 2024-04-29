@@ -1,7 +1,10 @@
 """
-A collection of spectral water wave functions.
-#TODO: UNITTESTS
+Spectral water wave functions.
 """
+
+# TODO:
+# - unit tests
+# - rename/unify functions and variables
 
 __all__ = [
     'mean_square_slope',

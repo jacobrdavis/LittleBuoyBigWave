@@ -1,10 +1,14 @@
 """
 A collection of functions for working with COAMPS-TC model data.
-
-#TODO:
-    - use np for datetimes?
-    - test shapes in unittests
 """
+
+
+# TODO:
+# - use np for datetimes?
+# - test shapes in unittests
+# - rename/unify functions and variables
+
+
 __all__ = [
     'read_coamps_wnd_file',
 ]
