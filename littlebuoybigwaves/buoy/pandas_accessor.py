@@ -136,6 +136,20 @@ class BuoyDataFrameAccessor:
         new_df = self._obj.assign(**new_cols)
         return new_df
 
+    def energy_period(self, **kwargs):
+        """ Calculate energy-weighted period and return a new DataFrame. """
+        energy_period = self._obj.apply(
+                lambda df: waves.energy_period(
+                    energy_density=df[self.cols.energy_density],
+                    frequency=df[self.cols.frequency],
+                    **kwargs,
+                ),
+                axis=1,
+            )
+        new_cols = {self.cols.mean_period: energy_period}  #TODO: update col
+        new_df = self._obj.assign(**new_cols)
+        return new_df
+
     def wave_direction(self, **kwargs) -> pd.DataFrame:
         """ Calculate wave direction and return a new DataFrame. """
         direction = self._obj.apply(
