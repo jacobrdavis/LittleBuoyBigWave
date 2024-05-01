@@ -126,10 +126,10 @@ class BuoyDataFrameAccessor:
         """ Calculate mean square slope and return a new DataFrame. """
         mean_square_slope = self._obj.apply(
                 lambda df: waves.mean_square_slope(
-                    energy=df[self.cols.energy_density],
-                    freq=df[self.cols.frequency],
+                    energy_density=df[self.cols.energy_density],
+                    frequency=df[self.cols.frequency],
                     **kwargs,
-                )[0],  #TODO: need to fix output tuple of function
+                ),
                 axis=1,
             )
         new_cols = {self.cols.mean_square_slope: mean_square_slope}

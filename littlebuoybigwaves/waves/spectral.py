@@ -30,42 +30,28 @@ TWO_PI = 2 * np.pi
 def mean_square_slope(
     energy_density: np.ndarray,
     frequency: np.ndarray,
-    frequency_min: Optional[float] = None,
-    frequency_max: Optional[float] = None,
-) -> np.ndarray:
+) -> Tuple[float, np.ndarray]:
     """
     Calculate spectral mean square slope as the fourth moment of the one-
     dimensional frequency spectrum.
 
-    Note: Minimum and maximum frequency bounds are inclusive.  If
-    `frequency_min` or `frequency_max` are not provided, all frequencies
-    are used.
-
     Args:
-        energy_density (np.ndarray): 1-D energy density spectrum in frequency.
-        frequency (np.ndarray): 1-D frequencies.
-        frequency_min (Optional[float], optional): Minimum of frequency extent
-            to calculate mean square slope over.
-        frequency_max (Optional[float], optional): Maximum of frequency extent.
+        energy_density (np.ndarray): 1-D energy density frequency spectrum with
+            shape (f,) or (n, f).
+        frequency (np.ndarray): 1-D frequencies with shape (f,).
 
     Returns:
-        np.ndarray: Mean square slope.
+    Mean square slope as a
+        float: if the shape of `energy_density` is (f,).
+        np.ndarray: if the shape of `energy_density` is (n, f).
     """
     energy_density = np.asarray(energy_density)
     frequency = np.asarray(frequency)
 
-    if frequency_min is None:
-        frequency_min = frequency.min()
-
-    if frequency_max is None:
-        frequency_max = frequency.max()
-
-    in_range = np.logical_and(frequency >= frequency_min,
-                              frequency <= frequency_max)
-
-    fourth_moment = spectral_moment(energy_density=energy_density[in_range],
-                                    frequency=frequency[in_range],
-                                    n=4)
+    fourth_moment = spectral_moment(energy_density=energy_density,
+                                    frequency=frequency,
+                                    n=4,
+                                    axis=-1)
     return (TWO_PI**4 * fourth_moment) / (ACCELERATION_OF_GRAVITY**2)
 
 
@@ -316,14 +302,12 @@ def energy_period(energy, freq, returnAsFreq = False):
 #     return mn
 
 
-def spectral_moment(energy_density, frequency, n):
+def spectral_moment(energy_density, frequency, n, axis=-1):
     """
     Compute the 'nth' spectral moment.
-
-    Integrates along the last axis.
     """
     frequency_n = frequency ** n
-    moment_n = np.trapz(energy_density * frequency_n, x=frequency, axis=-1)
+    moment_n = np.trapz(energy_density * frequency_n, x=frequency, axis=axis)
     return moment_n
 
 
