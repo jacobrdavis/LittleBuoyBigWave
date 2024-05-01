@@ -8,6 +8,7 @@ Spectral water wave functions.
 
 __all__ = [
     'mean_square_slope',
+    'mean_square_slope_original',
     'energy_period',
     'spectral_moment',
     'sig_wave_height',
@@ -17,13 +18,58 @@ __all__ = [
 ]
 
 import warnings
+from typing import Tuple, Optional
 
 import numpy as np
 
-from typing import Tuple
+
+ACCELERATION_OF_GRAVITY = 9.81  # (m/s^2)
+TWO_PI = 2 * np.pi
 
 
 def mean_square_slope(
+    energy_density: np.ndarray,
+    frequency: np.ndarray,
+    frequency_min: Optional[float] = None,
+    frequency_max: Optional[float] = None,
+) -> np.ndarray:
+    """
+    Calculate spectral mean square slope as the fourth moment of the one-
+    dimensional frequency spectrum.
+
+    Note: Minimum and maximum frequency bounds are inclusive.  If
+    `frequency_min` or `frequency_max` are not provided, all frequencies
+    are used.
+
+    Args:
+        energy_density (np.ndarray): 1-D energy density spectrum in frequency.
+        frequency (np.ndarray): 1-D frequencies.
+        frequency_min (Optional[float], optional): Minimum of frequency extent
+            to calculate mean square slope over.
+        frequency_max (Optional[float], optional): Maximum of frequency extent.
+
+    Returns:
+        np.ndarray: Mean square slope.
+    """
+    energy_density = np.asarray(energy_density)
+    frequency = np.asarray(frequency)
+
+    if frequency_min is None:
+        frequency_min = frequency.min()
+
+    if frequency_max is None:
+        frequency_max = frequency.max()
+
+    in_range = np.logical_and(frequency >= frequency_min,
+                              frequency <= frequency_max)
+
+    fourth_moment = spectral_moment(energy_density=energy_density[in_range],
+                                    frequency=frequency[in_range],
+                                    n=4)
+    return (TWO_PI**4 * fourth_moment) / (ACCELERATION_OF_GRAVITY**2)
+
+
+def mean_square_slope_original(
     energy: np.ndarray,
     freq: np.ndarray,
     freq_range='dynamic',

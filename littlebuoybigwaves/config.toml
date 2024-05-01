@@ -2,8 +2,7 @@
 time='time'
 id='id'
 
-[cols]
-#TODO: do not neccessarily need all, maybe just the basics used to validate?
+[cols]  #TODO: do not neccessarily need all, maybe just the basics used to validate?
 longitude='longitude'
 latitude='latitude'
 significant_height='significant_height'
