@@ -10,7 +10,6 @@ Spectral water wave functions.
 __all__ = [
     'mean_square_slope',
     'energy_period',
-    'energy_period_original',
     'spectral_moment',
     'sig_wave_height',
     'direction',
@@ -56,51 +55,14 @@ def mean_square_slope(
     return (TWO_PI**4 * fourth_moment) / (ACCELERATION_OF_GRAVITY**2)
 
 
-def energy_period_original(energy, freq, returnAsFreq = False):
-    """
-    Function to compute energy period (centroid period)
-    
-    Input:
-        - energy, input array of energy densities ([n,1] arr OR [n,m] ndarr)
-        - freq, input array of frequencies ([n,1] arr OR [n,m] ndarr)
-        - returnAsFreq, optional boolean flag to return energy frequency rather than its reciprocal
-    
-    Output:
-        - Te, energy period = f_e^(-1) ([1,] float)
-            * if energy is empty or invalid, Te is assigned a NaN
-
-    Example:
-        Te = energy_period(energy, freq)
-
-    """
-    if hasattr(energy, '__len__') and (not isinstance(energy, str)):
-        firstMoment = spectral_moment(energy, freq, n=1) # = np.trapz(np.multiply(energy,freq),x=freq)
-        area = spectral_moment(energy, freq, n=0) # = np.trapz(energy,x=freq)
-        f_e = np.divide(firstMoment,area)
-        
-        if not 0.05 < f_e < 2:
-            warnings.warn((f'The energy frequency, `f_e` = {np.round(f_e,3)}'
-            ' Hz, is suspicious...check that you have provided `energy` and'
-            ' `freq` in the correct order.'))
-
-        if returnAsFreq == True:
-            return f_e
-
-        Te = np.reciprocal(f_e)
-    else:
-        Te = np.NaN
-        warnings.warn('`energy` is empty or invalid; output assigned as NaN.')
-    return Te
-
-
 def energy_period(
     energy_density: np.ndarray,
     frequency: np.ndarray,
     return_as_frequency: bool = False
 ) -> Tuple[float, np.ndarray]:
     """
-     Calculate spectral mean square slope as the fourth moment of the one-
-    dimensional frequency spectrum.
+    Calculate energy-weighted frequency as the ratio of the first and zeroth
+    moments of the one-dimensional frequency spectrum.
 
     Args:
         energy_density (np.ndarray): 1-D energy density frequency spectrum with
@@ -117,49 +79,17 @@ def energy_period(
     energy_density = np.asarray(energy_density)
     frequency = np.asarray(frequency)
 
-    first_moment = spectral_moment(energy_density=energy_density,
-                                   frequency=frequency,
-                                   n=1,
-                                   axis=-1)
-    zeroth_moment = spectral_moment(energy_density=energy_density,
-                                    frequency=frequency,
-                                    n=0,
-                                    axis=-1)
-
-    energy_frequency = first_moment / zeroth_moment
+    # Ratio of the 1st and 0th moments is equilvaent to 0th moment-
+    # weighted frequency.
+    energy_frequency = moment_weighted_mean(arr=frequency,
+                                            energy_density=energy_density,
+                                            frequency=frequency,
+                                            n=0)
 
     if return_as_frequency:
         return energy_frequency
     else:
         return energy_frequency**(-1)
-
-
-# def spectral_moment(energy, freq=None, n=0):
-#     """
-#     Function to compute 'nth' spectral moment
-    
-#     Input:
-#         - energy, input array of energy densities ([n,1] arr OR [n,m] ndarr)
-#         - freq, input array of frequencies ([n,1] arr OR [n,m] ndarr)
-#         - n, moment ([1,] int)
-       
-#     Output:
-#         - mn, nth spectral moment ([1,] float)
-#             * if energy is empty or invalid, mn is assigned a NaN
-
-#     Example:
-    
-#     Compute 4th spectral moment:
-#         m4 = spectral_moment(energy, freq, n=4)
-#     """
-#     if hasattr(energy, '__len__') and (not isinstance(energy, str)):
-#         # m_n = np.trapz(np.multiply(energy,freq**n),x=freq)
-#         fn = np.power(freq,n)
-#         mn = np.trapz(np.multiply(energy,fn),x=freq)
-        
-#     else:
-#         mn = np.NaN
-#     return mn
 
 
 def spectral_moment(energy_density, frequency, n, axis=-1):
@@ -171,9 +101,16 @@ def spectral_moment(energy_density, frequency, n, axis=-1):
     return moment_n
 
 
-def moment_weighted_mean(arr, energy_density, frequency, n):
-    moment_n = spectral_moment(energy_density=energy_density, frequency=frequency, n=n)
-    weighted_moment_n = spectral_moment(energy_density=energy_density * arr, frequency=frequency, n=n)
+def moment_weighted_mean(arr, energy_density, frequency, n, axis=-1):
+    moment_n = spectral_moment(energy_density=energy_density,
+                               frequency=frequency,
+                               n=n,
+                               axis=axis)
+
+    weighted_moment_n = spectral_moment(energy_density=energy_density * arr,
+                                        frequency=frequency,
+                                        n=n,
+                                        axis=axis)
     return weighted_moment_n / moment_n
 
 
