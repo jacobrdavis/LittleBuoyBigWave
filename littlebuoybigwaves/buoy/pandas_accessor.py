@@ -146,7 +146,7 @@ class BuoyDataFrameAccessor:
                 ),
                 axis=1,
             )
-        new_cols = {self.cols.mean_period: energy_period}  #TODO: update col
+        new_cols = {self.cols.mean_period: energy_period}  # TODO: update col
         new_df = self._obj.assign(**new_cols)
         return new_df
 

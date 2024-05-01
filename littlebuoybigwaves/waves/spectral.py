@@ -12,6 +12,7 @@ __all__ = [
     'energy_period',
     'spectral_moment',
     'sig_wave_height',
+    'significant_wave_height',
     'direction',
     'directional_spread',
     'moment_weighted_mean',
@@ -71,7 +72,7 @@ def energy_period(
         return_as_frequency (bool): if True, return frequency in Hz.
 
     Returns:
-    Energy period as a
+    Energy-weighted period as a
         float: if the shape of `energy_density` is (f,).
         np.ndarray: if the shape of `energy_density` is (n, f).
 
@@ -85,7 +86,6 @@ def energy_period(
                                             energy_density=energy_density,
                                             frequency=frequency,
                                             n=0)
-
     if return_as_frequency:
         return energy_frequency
     else:
@@ -114,41 +114,42 @@ def moment_weighted_mean(arr, energy_density, frequency, n, axis=-1):
     return weighted_moment_n / moment_n
 
 
-def sig_wave_height(energy, freq):
+def significant_wave_height(
+    energy_density: np.ndarray,
+    frequency: np.ndarray,
+) -> Tuple[float, np.ndarray]:
     """
-    Function to compute significant wave height
-    
-    Input:
-        - energy, input array of energy densities ([n,1] arr OR [n,m] ndarr)
-        - freq, input array of frequencies ([n,1] arr OR [n,m] ndarr)
-       
-    Output:
-        - Hs, significant wave height ([1,] float)
-            * if energy is empty or invalid, Hs is assigned a NaN
+    Calculate significant wave height as four times the square root of the
+    spectral variance.
 
-    Example:
-    
-        Hs = sig_wave_height(energy, freq)
+    Args:
+        energy_density (np.ndarray): 1-D energy density frequency spectrum with
+            shape (f,) or (n, f).
+        frequency (np.ndarray): 1-D frequencies with shape (f,).
+        return_as_frequency (bool): if True, return frequency in Hz.
+
+    Returns:
+    Significant wave height as a
+        float: if the shape of `energy_density` is (f,).
+        np.ndarray: if the shape of `energy_density` is (n, f).
 
     """
-    if hasattr(energy, '__len__') and (not isinstance(energy, str)):
-        # recover variance from spectrum:
-        m0 = spectral_moment(energy, freq, n=0) 
+    energy_density = np.asarray(energy_density)
+    frequency = np.asarray(frequency)
 
-        # standard deviation:
-        stDev = np.sqrt(m0)  
+    zeroth_moment = spectral_moment(energy_density=energy_density,
+                                    frequency=frequency,
+                                    n=0,
+                                    axis=-1)
 
-        # sig wave height:   
-        Hs  =  4*stDev
-      
-    else:
-        Hs = np.NaN
-    return Hs
+    return 4 * np.sqrt(zeroth_moment)
+
 
 #TODO: option to use a2 b2?
 def direction(a1, b1):
     """TODO: from Spotter Technical Reference Manual"""
     return (270 - np.rad2deg(np.arctan2(b1, a1))) % 360
+
 
 #TODO: option to use a2 b2?
 def directional_spread(a1, b1):
@@ -165,19 +166,3 @@ def directional_spread(a1, b1):
     """
     directional_spread_rad = np.sqrt(2 * (1 - np.sqrt(a1**2 + b1**2)))
     return directional_spread_rad #np.rad2deg(directional_spread_rad)
-
-
-#%% testing
-def main():
-    energy = [0.1, 0.5, 10, 0.5]
-    freq = [0.05, 0.1, 0.25, 0.5]
-    freq_range = [0.05,0.25]
-    # freq_range = 'total'
-    mss = mean_square_slope(energy, freq, norm='frequency', freq_range=freq_range)
-    print(mss)
-
-if __name__=='__main__':
-    main()
-#%%
-
- 
