@@ -10,6 +10,7 @@ Spectral water wave functions.
 __all__ = [
     'mean_square_slope',
     'energy_period',
+    'energy_period_original',
     'spectral_moment',
     'sig_wave_height',
     'direction',
@@ -55,7 +56,7 @@ def mean_square_slope(
     return (TWO_PI**4 * fourth_moment) / (ACCELERATION_OF_GRAVITY**2)
 
 
-def energy_period(energy, freq, returnAsFreq = False):
+def energy_period_original(energy, freq, returnAsFreq = False):
     """
     Function to compute energy period (centroid period)
     
@@ -90,6 +91,47 @@ def energy_period(energy, freq, returnAsFreq = False):
         Te = np.NaN
         warnings.warn('`energy` is empty or invalid; output assigned as NaN.')
     return Te
+
+
+def energy_period(
+    energy_density: np.ndarray,
+    frequency: np.ndarray,
+    return_as_frequency: bool = False
+) -> Tuple[float, np.ndarray]:
+    """
+     Calculate spectral mean square slope as the fourth moment of the one-
+    dimensional frequency spectrum.
+
+    Args:
+        energy_density (np.ndarray): 1-D energy density frequency spectrum with
+            shape (f,) or (n, f).
+        frequency (np.ndarray): 1-D frequencies with shape (f,).
+        return_as_frequency (bool): if True, return frequency in Hz.
+
+    Returns:
+    Energy period as a
+        float: if the shape of `energy_density` is (f,).
+        np.ndarray: if the shape of `energy_density` is (n, f).
+
+    """
+    energy_density = np.asarray(energy_density)
+    frequency = np.asarray(frequency)
+
+    first_moment = spectral_moment(energy_density=energy_density,
+                                   frequency=frequency,
+                                   n=1,
+                                   axis=-1)
+    zeroth_moment = spectral_moment(energy_density=energy_density,
+                                    frequency=frequency,
+                                    n=0,
+                                    axis=-1)
+
+    energy_frequency = first_moment / zeroth_moment
+
+    if return_as_frequency:
+        return energy_frequency
+    else:
+        return energy_frequency**(-1)
 
 
 # def spectral_moment(energy, freq=None, n=0):
