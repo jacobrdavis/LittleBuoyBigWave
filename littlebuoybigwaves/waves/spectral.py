@@ -11,7 +11,6 @@ __all__ = [
     'mean_square_slope',
     'energy_period',
     'spectral_moment',
-    'sig_wave_height',
     'significant_wave_height',
     'direction',
     'directional_spread',
@@ -92,9 +91,26 @@ def energy_period(
         return energy_frequency**(-1)
 
 
-def spectral_moment(energy_density, frequency, n, axis=-1):
+def spectral_moment(
+    energy_density: np.ndarray,
+    frequency: np.ndarray,
+    n: float,
+    axis: int = -1,
+) -> Tuple[float, np.ndarray]:
     """
     Compute the 'nth' spectral moment.
+
+    Args:
+        energy_density (np.ndarray): 1-D energy density frequency spectrum.
+        frequency (np.ndarray): 1-D frequencies.
+        n (float): Moment order (e.g., `n=1` is returns the first moment).
+        axis (int, optional): Axis to calculate the moment along. Defaults to -1.
+
+    Returns:
+    nth moment as a
+        float: if the shape of `energy_density` is (f,).
+        np.ndarray: if `energy_density` has more than one dimension.  The shape
+            of the returned array is reduced along `axis`.
     """
     frequency_n = frequency ** n
     moment_n = np.trapz(energy_density * frequency_n, x=frequency, axis=axis)
@@ -126,7 +142,6 @@ def significant_wave_height(
         energy_density (np.ndarray): 1-D energy density frequency spectrum with
             shape (f,) or (n, f).
         frequency (np.ndarray): 1-D frequencies with shape (f,).
-        return_as_frequency (bool): if True, return frequency in Hz.
 
     Returns:
     Significant wave height as a
