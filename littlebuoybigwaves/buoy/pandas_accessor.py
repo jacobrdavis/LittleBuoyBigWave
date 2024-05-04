@@ -116,11 +116,6 @@ class BuoyDataFrameAccessor:
                 ),
                 axis=1,
             )
-        # new_cols = {self.cols.wavenumber: wavenumber}
-        # new_df = self._obj.assign(**new_cols)
-        # return new_df
-        # wavenumber = wavenumber.rename(self.cols.wavenumber)
-        # return pd.concat([self._obj, wavenumber], axis=1)
         return wavenumber
 
     def mean_square_slope(self, **kwargs) -> pd.Series:
@@ -133,9 +128,6 @@ class BuoyDataFrameAccessor:
                 ),
                 axis=1,
             )
-        # new_cols = {self.cols.mean_square_slope: mean_square_slope}
-        # new_df = self._obj.assign(**new_cols)
-        # return new_df
         return mean_square_slope
 
     def energy_period(self, **kwargs) -> pd.Series:
