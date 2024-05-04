@@ -8,14 +8,14 @@ accessors and associated methods.
 # - Many methods can be vectorized if all frequencies have the same shape...
 #   Might consider adding a check for uniform frequency arrays and subsequent
 #   pathways in methods.
-
+# - Create default namespace that can be intersected with config namespace
 
 __all__ = [
     "BuoyDataFrameAccessor",
 ]
 
 import types
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -95,8 +95,8 @@ class BuoyDataFrameAccessor:
         drifter_ds[self.idxs.time] = pd.DatetimeIndex(drifter_ds[self.idxs.time].values)
         return drifter_ds
 
-    def frequency_to_wavenumber(self, **kwargs) -> pd.DataFrame:
-        """ Convert frequency to wavenumber and return a new DataFrame. """
+    def frequency_to_wavenumber(self, **kwargs) -> pd.Series:
+        """ Convert frequency to wavenumber and return it as a Series. """
         # If depth data is present, use the full relationship. Otherwise, only
         # the deep water relationship can be used.
         if self.cols.depth in self._obj.columns:
@@ -116,14 +116,15 @@ class BuoyDataFrameAccessor:
                 ),
                 axis=1,
             )
-        new_cols = {self.cols.wavenumber: wavenumber}
-        new_df = self._obj.assign(**new_cols)
-        return new_df
+        # new_cols = {self.cols.wavenumber: wavenumber}
+        # new_df = self._obj.assign(**new_cols)
+        # return new_df
         # wavenumber = wavenumber.rename(self.cols.wavenumber)
         # return pd.concat([self._obj, wavenumber], axis=1)
+        return wavenumber
 
-    def mean_square_slope(self, **kwargs):
-        """ Calculate mean square slope and return a new DataFrame. """
+    def mean_square_slope(self, **kwargs) -> pd.Series:
+        """ Calculate mean square slope and return it as a Series. """
         mean_square_slope = self._obj.apply(
                 lambda df: waves.mean_square_slope(
                     energy_density=df[self.cols.energy_density],
@@ -132,12 +133,13 @@ class BuoyDataFrameAccessor:
                 ),
                 axis=1,
             )
-        new_cols = {self.cols.mean_square_slope: mean_square_slope}
-        new_df = self._obj.assign(**new_cols)
-        return new_df
+        # new_cols = {self.cols.mean_square_slope: mean_square_slope}
+        # new_df = self._obj.assign(**new_cols)
+        # return new_df
+        return mean_square_slope
 
-    def energy_period(self, **kwargs):
-        """ Calculate energy-weighted period and return a new DataFrame. """
+    def energy_period(self, **kwargs) -> pd.Series:
+        """ Calculate energy-weighted period and return it as a Series. """
         energy_period = self._obj.apply(
                 lambda df: waves.energy_period(
                     energy_density=df[self.cols.energy_density],
@@ -146,12 +148,12 @@ class BuoyDataFrameAccessor:
                 ),
                 axis=1,
             )
-        new_cols = {self.cols.mean_period: energy_period}  # TODO: update col
-        new_df = self._obj.assign(**new_cols)
-        return new_df
+        return energy_period
 
-    def wave_direction(self, **kwargs) -> pd.DataFrame:
-        """ Calculate wave direction and return a new DataFrame. """
+    def wave_direction(self, **kwargs) -> pd.Series:
+        """
+        Calculate wave direction per frequency and return it as a Series.
+        """
         direction = self._obj.apply(
                 lambda df: waves.direction(
                     df[self.cols.a1],
@@ -160,12 +162,13 @@ class BuoyDataFrameAccessor:
                 ),
                 axis=1,
             )
-        new_cols = {self.cols.direction: direction}
-        new_df = self._obj.assign(**new_cols)
-        return new_df
+        return direction
 
-    def wave_directional_spread(self, **kwargs) -> pd.DataFrame:
-        """ Calculate wave directional spread and return a new DataFrame. """
+    def wave_directional_spread(self, **kwargs) -> pd.Series:
+        """
+        Calculate wave directional spread per frequency and return it as a
+        Series.
+        """
         directional_spread = self._obj.apply(
                 lambda df: waves.directional_spread(
                     df[self.cols.a1],
@@ -174,12 +177,12 @@ class BuoyDataFrameAccessor:
                 ),
                 axis=1,
             )
-        new_cols = {self.cols.directional_spread: directional_spread}
-        new_df = self._obj.assign(**new_cols)
-        return new_df
+        return directional_spread
 
-    def drift_speed_and_direction(self) -> pd.DataFrame:
-        """ Calculate drift speed/direction and return a new DataFrame. """
+    def drift_speed_and_direction(self) -> Tuple[pd.Series, pd.Series]:
+        """
+        Calculate drift speed and direction and return each as as Series.
+        """
         #TODO: need to group by id for correct results
         drift_speed_mps, drift_dir_deg = buoy.drift_speed_and_direction(
             longitude=self._obj[self.cols.longitude],
@@ -187,22 +190,20 @@ class BuoyDataFrameAccessor:
             time=self._obj.index.get_level_values(level=self.idxs.time),
             append=True,
         )
-        new_cols = {self.cols.drift_speed: drift_speed_mps,
-                    self.cols.drift_direction: drift_dir_deg}
-        new_df = self._obj.assign(**new_cols)
-        return new_df
+        return drift_speed_mps, drift_dir_deg
 
     def doppler_correct(self) -> pd.DataFrame:
         """ Doppler correct frequencies and return a new DataFrame."""
         #TODO: need to group by id
-        new_df = self._obj.copy(deep=False)  #TODO: confirm this is right
-        # Calculate any missing, non-standard columns.
+        new_df = self._obj.copy(deep=False)  # TODO: confirm this is right
+        # Calculate any missing columns.
         if self.cols.wavenumber not in self._obj.columns:
-            new_df = new_df.buoy.frequency_to_wavenumber()
+            new_df[self.cols.wavenumber] = new_df.buoy.frequency_to_wavenumber()
         if self.cols.direction not in self._obj.columns:
-            new_df = new_df.buoy.wave_direction()
+            new_df[self.cols.direction] = new_df.buoy.wave_direction()
         if self.cols.drift_speed not in self._obj.columns:
-            new_df = new_df.buoy.drift_speed_and_direction()
+            new_df[self.cols.drift_speed], new_df[self.cols.drift_direction] \
+                                    = new_df.buoy.drift_speed_and_direction()
 
         # Apply the Doppler correction to each frequency array. Results can be
         # added directly to the DataFrame copy using `result_type='expand'`.
@@ -227,13 +228,14 @@ class BuoyDataFrameAccessor:
         """ Doppler correct mean square slope and return a new DataFrame."""
         new_df = self._obj.copy(deep=False)
 
-        # Calculate any missing, non-standard columns.
+        # Calculate any missing columns.
         if self.cols.wavenumber not in self._obj.columns:
-            new_df = new_df.buoy.frequency_to_wavenumber()
+            new_df[self.cols.wavenumber] = new_df.buoy.frequency_to_wavenumber()
         if self.cols.direction not in self._obj.columns:
-            new_df = new_df.buoy.wave_direction()
+            new_df[self.cols.direction] = new_df.buoy.wave_direction()
         if self.cols.drift_speed not in self._obj.columns:
-            new_df = new_df.buoy.drift_speed_and_direction()
+            new_df[self.cols.drift_speed], new_df[self.cols.drift_direction] \
+                                    = new_df.buoy.drift_speed_and_direction()
 
         new_df['mean_square_slope_absolute'] = new_df.apply(  #TODO: use .cols
             lambda df: buoy.doppler_correct_mean_square_slope(
