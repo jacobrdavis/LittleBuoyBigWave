@@ -15,6 +15,7 @@ __all__ = [
     'direction',
     'directional_spread',
     'moment_weighted_mean',
+    'merge_frequencies',
 ]
 
 import warnings
@@ -180,4 +181,59 @@ def directional_spread(a1, b1):
        np.ndarray: directional spread in radians.
     """
     directional_spread_rad = np.sqrt(2 * (1 - np.sqrt(a1**2 + b1**2)))
-    return directional_spread_rad #np.rad2deg(directional_spread_rad)
+    return directional_spread_rad  # np.rad2deg(directional_spread_rad)
+
+
+def merge_frequencies(
+    energy_density: np.ndarray,
+    frequency: np.ndarray,
+    n_merge: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Merge neighboring frequencies in a spectrum.
+
+    Args:
+        energy_density (np.ndarray): 1-D energy density frequency spectrum with
+            shape (f,)
+        frequency (np.ndarray): 1-D frequencies with shape (f,).
+        n_merge (int): number of adjacent frequencies to merge.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: merged energy density and frequency.
+
+    Example:
+    ```
+    >>> frequency = np.arange(0, 9, 1)
+    array([0, 1, 2, 3, 4, 5, 6, 7, 8])
+
+    >>> energy_density = frequency * 3
+    array([ 0,  3,  6,  9, 12, 15, 18, 21, 24])
+
+    >>> merge_frequencies(energy_density, frequency, n_merge=3)
+    (array([1., 4., 7.]), array([ 3., 12., 21.]))
+    ```
+    """
+    n_groups = len(frequency) // n_merge
+    frequency_merged = _average_n_groups(frequency, n_groups)
+    energy_density_merged = np.apply_along_axis(_average_n_groups,
+                                                axis=-1,
+                                                arr=energy_density,
+                                                n_groups=n_groups)
+    return energy_density_merged, frequency_merged
+
+
+def _average_n_groups(arr, n_groups):
+    """
+    Adapted from Divakar via https://stackoverflow.com/questions/53178018/
+    average-of-elements-in-a-subarray.
+
+    Functionally equivalent to (but faster than):
+    arr_split = np.array_split(arr, n_groups)
+    arr_merged = np.array([group.mean() for group in arr_split])
+    """
+    n = len(arr)
+    m = n // n_groups
+    w = np.full(n_groups, m)
+    w[:n - m*n_groups] += 1
+    sums = np.add.reduceat(arr, np.r_[0, w.cumsum()[:-1]])
+    return sums / w
