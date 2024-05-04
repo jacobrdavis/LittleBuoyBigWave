@@ -9,6 +9,7 @@ scrap_notebooks/
 *.svg
 test.ipynb
 
+
 # MacOS stuff
 .DS_store
 
