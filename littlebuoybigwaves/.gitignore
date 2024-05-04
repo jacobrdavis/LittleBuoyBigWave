@@ -7,7 +7,7 @@ scrap_notebooks/
 *.vscode
 *.pptx
 *.svg
-test.ipynb
+*./test.ipynb
 
 
 # MacOS stuff
