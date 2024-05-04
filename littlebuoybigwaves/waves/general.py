@@ -1,24 +1,30 @@
 """
-A collection of general water wave functions.
-
-#TODO:
-- Tests of dispersion functions
-
-
-
+General water wave functions.
 """
+
+# TODO:
+# - unit tests
+# - rename/unify functions and variables
+
 __all__ = [
     'dispersion',
     'deep_water_dispersion',
     'shallow_water_dispersion',
+    'group_to_phase_ratio',
+    'depth_regime',
+    'intrinsic_group_velocity',
+    'intrinsic_dispersion',
+    'phase_velocity',
 ]
+
+from typing import Tuple
 
 import numpy as np
 from scipy.optimize import newton
 
 GRAVITY = 9.81  # m/s^2
 
-
+#TODO: rename to inverse_dispersion.  See pywsra
 def dispersion(
     frequency: np.ndarray,
     depth: np.ndarray,
@@ -137,6 +143,7 @@ def _dispersion_with_limits(frequency, depth):
 
     return wavenumber
 
+
 def deep_water_dispersion(frequency):
     """Computes wavenumber from the deep water linear dispersion relationship.
 
@@ -212,7 +219,7 @@ def _dispersion_root(wavenumber, angular_frequency, depth):
     #TODO:
     gk = GRAVITY * wavenumber
     kh = wavenumber * depth
-    return  gk * np.tanh(kh) - angular_frequency**2
+    return gk * np.tanh(kh) - angular_frequency**2
 
 
 def _dispersion_derivative(wavenumber, angular_frequency, depth):
@@ -221,78 +228,80 @@ def _dispersion_derivative(wavenumber, angular_frequency, depth):
     return GRAVITY * np.tanh(kh) + gk * depth * (1 - np.tanh(kh)**2)
 
 
+def group_to_phase_ratio(
+    wavenumber: np.ndarray,
+    depth: float = np.inf,
+) -> np.ndarray:
+    """ Compute the ratio of group velocity to phase velocity.
+
+    Note: to prevent overflows in `np.sinh`, the product of wavenumber and
+    depth (relative depth) are used to assign ratios at deep or shallow limits:
+
+        shallow:  Cg = 1.0 if kh < np.pi/10 (h < L/20)
+           deep:  Cg = 0.5 if kh > np.pi    (h > L/2)
+
+    Args:
+        wavenumber (np.ndarray): of shape (k,) containing wavenumbers
+        depth (float, optional): positive water depth. Defaults to np.inf.
+
+    Returns:
+        np.ndarray: of shape (k,) containing ratio at each wavenumber.
+    """
+    kh = wavenumber * depth
+    in_deep, in_shallow, in_intermd = depth_regime(kh)
+    ratio = np.empty(kh.shape)
+    ratio[in_deep] = 0.5
+    ratio[in_shallow] = 1.0
+    ratio[in_intermd] = 0.5 + kh[in_intermd] / np.sinh(2 * kh[in_intermd])
+    return ratio
+
+
+def depth_regime(kh: np.ndarray) -> Tuple:
+    """ Classify depth regime based on relative depth.
+
+    Classify depth regime based on relative depth (product of wavenumber
+    and depth) using the shallow and deep limits:
+
+        shallow:  kh < np.pi/10 (h < L/20)
+           deep:  kh > np.pi    (h > L/2)
+
+    The depth regime is classified as intermediate if not at the deep or
+    shallow limits.
+
+    Args:
+        kh (np.ndarray): relative depth of shape (k, )
+
+    Returns:
+        np.ndarray[bool]: true where kh is deep, false otherwise
+        np.ndarray[bool]: true where kh is shallow, false otherwise
+        np.ndarray[bool]: true where kh is intermediate, false otherwise
+    """
+    in_deep = kh > np.pi
+    in_shallow = kh < np.pi/10
+    in_intermd = np.logical_and(~in_deep, ~in_shallow)
+    return in_deep, in_shallow, in_intermd
+
+
+def intrinsic_group_velocity(wavenumber, frequency=None, depth=np.inf):
+    ratio = group_to_phase_ratio(wavenumber, depth)
+    return ratio * phase_velocity(wavenumber, frequency, depth)
+
+
+def intrinsic_dispersion(wavenumber, depth=np.inf):
+    GRAVITY = 9.81
+    gk = GRAVITY * wavenumber
+    kh = wavenumber * depth
+    return np.sqrt(gk * np.tanh(kh))  # angular frequency
+
+
+def phase_velocity(wavenumber, frequency=None, depth=np.inf):
+    if frequency is None:
+        angular_frequency = intrinsic_dispersion(wavenumber, depth)
+    else:
+        angular_frequency = frequency_to_angular_frequency(frequency)
+    return angular_frequency / wavenumber
+
+
 def frequency_to_angular_frequency(frequency):
     """Helper function to convert frequency (f) to angular frequency (omega)"""
     return 2 * np.pi * frequency
-
-
-def dispersion_regime(wavenumber, depth):
-    #TODO:
-    is_deep = kh > np.pi
-    is_shallow = kh < np.pi/10
-
-
-#%%
-#%%
-# import matplotlib.pyplot as plt
-#TODO: testing
-# f = np.ones(1000)*0.1
-# w = 2*np.pi*f
-# h = np.linspace(0.5, 1000, len(f))
-# k = dispersion(f, h)
-
-# fig, ax = plt.subplots()
-# ax.plot(h, k[:, 0], color='k')
-# ax.axhline(w[0]**2 / GRAVITY)
-# ax.plot(h, w * np.sqrt(1 / (GRAVITY * h)))
-
-# #%%
-# f = np.linspace(0.05, 0.5, 40)
-
-# h = np.linspace(0.5, 10, 10)
-
-# f = 0.05
-# h = 0.5
-# k = dispersion(f, h)
-
-# k
-# #%%
-# import time
-# n = 10
-# f = np.linspace(0.05, 0.5, 40)
-# f_mat = np.tile(f, (n, 1))
-# # w = 2*np.pi*f
-# # w_mat = 2*np.pi*f_mat
-# h = np.linspace(0.5, n, len(f_mat))
-# h_mat = np.tile(h, (len(f), 1)).T
-
-# start = time.time()
-# wavenumber_1 = dispersion(frequency=f, depth=h, use_limits=False)
-# end = time.time()
-# print(end - start)
-
-
-# # start = time.time()
-# # wavenumber = dispersion(frequency=f_mat, depth=h, use_limits=False)
-# # end = time.time()
-# # print(end - start)
-
-# start = time.time()
-# wavenumber_2 = dispersion(frequency=f_mat, depth=h_mat, use_limits=True)
-# end = time.time()
-# print(end - start)
-
-# start = time.time()
-# wavenumber_3 = dispersion(frequency=f_mat, depth=h_mat, use_limits=False)
-# end = time.time()
-# print(end - start)
-
-# print(np.mean((wavenumber_2 - wavenumber_3)**2))
-# print(wavenumber_1)
-# print(wavenumber_2)
-# print(wavenumber_3)
-# #%%
-
-# fig, ax = plt.subplots()
-# ax.plot(h, wavenumber_1[:, 0])
-# ax.plot(h, wavenumber_2[:, 0])

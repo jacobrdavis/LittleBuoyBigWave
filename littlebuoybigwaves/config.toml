@@ -1,0 +1,31 @@
+[idxs]
+time='time'
+id='id'
+
+[cols]  #TODO: do not neccessarily need all, maybe just the basics used to validate?
+longitude='longitude'
+latitude='latitude'
+significant_height='significant_height'
+peak_period='peak_period'
+peak_direction='peak_direction'
+peak_directional_spread='peak_directional_spread'
+mean_period='mean_period'  #TODO: energy-weighted
+mean_direction='mean_direction'
+mean_directional_spread='mean_directional_spread'
+energy_density='energy_density'
+frequency='frequency'
+a1='a1'
+b1='b1'
+a2='a2'
+b2='b2'
+direction='direction'  #TODO: consider renaming to wave_direction
+directional_spread='directional_spread'  #TODO: consider renaming to wave_directional_spread
+mean_square_slope='mean_square_slope'
+wave_check_factor='wave_check_factor'
+wavenumber='wavenumber'
+depth='depth'
+drift_speed='drift_speed'
+drift_direction='drift_direction'
+absolute_frequency='absolute_frequency'
+u_dot_k='u_dot_k'
+wave_drift_alignment='wave_drift_alignment'

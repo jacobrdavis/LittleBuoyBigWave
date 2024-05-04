@@ -18,6 +18,7 @@ from io import BytesIO
 from zipfile import ZipFile
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 NHC_STORM_GRAPHICS_API = 'https://www.nhc.noaa.gov/storm_graphics/api/'
@@ -59,7 +60,7 @@ def get_latest_nhc_kml_files(storm_id: str):
 def read_shp_file(
     path: str,
     crs: str = "EPSG:4326",
-    index_by_datetime: bool = True
+    index_by_datetime: bool = False,
 ) -> gpd.GeoDataFrame:
     """ Read a shape file (.shp) into a GeoDataFrame.
 
@@ -102,15 +103,6 @@ def read_kml_file(path: str) -> gpd.GeoDataFrame:
     gpd.io.file.fiona.drvsupport.supported_drivers['KML'] = 'rw'
     return gpd.read_file(path, driver='KML')
 
-#     cone_path = './al102023_014adv_CONE.kml'  #marineobs_by_pgm.kml'
-#     track_path = './al102023_014adv_TRACK.kml'
-#     initialradii_path = './AL102023_2023083003_initialradii.kml'
-
-#     # Read file
-#     cone_gdf = gpd.read_file(cone_path, driver='KML')
-#     track_gdf = gpd.read_file(track_path, driver='KML')
-#     initialradii_gdf = gpd.read_file(initialradii_path, driver='KML')
-
 
 def set_best_track_datetime_index(best_track: pd.DataFrame) -> pd.DataFrame:
     """
@@ -126,19 +118,21 @@ def set_best_track_datetime_index(best_track: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame with unified datetime index
     """
-    datetime_columns = ['YEAR', 'MONTH', 'DAY','HOUR','MINUTE']
-    best_track['HOUR'] = best_track['HHMM'].str[:2]
-    best_track['MINUTE'] = best_track['HHMM'].str[2:]
-    best_track["datetime"] = pd.to_datetime(best_track[datetime_columns],
-                                            utc=True)
-    best_track.set_index('datetime', inplace=True)
-    best_track.drop(datetime_columns + ['HHMM'], axis=1, inplace=True)
+    datetime_columns = ['YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE']
+    best_track = (
+        best_track
+        .assign(HOUR=lambda df: df['HHMM'].str[:2])
+        .assign(MINUTE=lambda df: df['HHMM'].str[2:])
+        .assign(datetime=lambda df: pd.to_datetime(df[datetime_columns], utc=True))
+        .drop(datetime_columns + ['HHMM'], axis=1)
+        .set_index('datetime', drop=True)
+    )
     return best_track
 
 
 def mph_2_knots(mph):
     """ Helper function convert wind speeds from mph to knots. """
-    return mph*0.868976
+    return mph * 0.868976
 
 
 def best_track_pts_to_intensity(pts_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -159,9 +153,9 @@ def best_track_pts_to_intensity(pts_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             label and intensity.
     """
     for cat, definition in SAFFIR_SIMPSON.items():
-        range_kn = definition['range']
-        in_range = pts_gdf['INTENSITY'].between(mph_2_knots(range_kn[0]),
-                                                mph_2_knots(range_kn[1]))
+        range_kn = np.array(definition['range'])
+        in_range = pts_gdf['INTENSITY'].between(*mph_2_knots(range_kn))
         pts_gdf.loc[in_range, 'saffir_simpson_label'] = cat
         pts_gdf.loc[in_range, 'saffir_simpson_int'] = definition['int']
-        return pts_gdf
+
+    return pts_gdf

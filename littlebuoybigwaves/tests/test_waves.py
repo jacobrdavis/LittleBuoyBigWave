@@ -261,8 +261,6 @@ class TestSpectralWaveTools(unittest.TestCase):
                                 returnAsFreq=True)
 
         self.assertAlmostEqual(f_e, .125, 2)
-    
-
 
 
 # class TestGeneralWaveTools(unittest.TestCase): 
@@ -293,6 +291,71 @@ class TestSpectralWaveTools(unittest.TestCase):
 
         # with self.assertRaises(ValueError):
         #     knn_regression(k, data, query)
+
+    # testing for general wave tools:
+
+    # import matplotlib.pyplot as plt
+    #TODO: testing
+    # f = np.ones(1000)*0.1
+    # w = 2*np.pi*f
+    # h = np.linspace(0.5, 1000, len(f))
+    # k = dispersion(f, h)
+
+    # fig, ax = plt.subplots()
+    # ax.plot(h, k[:, 0], color='k')
+    # ax.axhline(w[0]**2 / GRAVITY)
+    # ax.plot(h, w * np.sqrt(1 / (GRAVITY * h)))
+
+    # #%%
+    # f = np.linspace(0.05, 0.5, 40)
+
+    # h = np.linspace(0.5, 10, 10)
+
+    # f = 0.05
+    # h = 0.5
+    # k = dispersion(f, h)
+
+    # k
+    # #%%
+    # import time
+    # n = 10
+    # f = np.linspace(0.05, 0.5, 40)
+    # f_mat = np.tile(f, (n, 1))
+    # # w = 2*np.pi*f
+    # # w_mat = 2*np.pi*f_mat
+    # h = np.linspace(0.5, n, len(f_mat))
+    # h_mat = np.tile(h, (len(f), 1)).T
+
+    # start = time.time()
+    # wavenumber_1 = dispersion(frequency=f, depth=h, use_limits=False)
+    # end = time.time()
+    # print(end - start)
+
+
+    # # start = time.time()
+    # # wavenumber = dispersion(frequency=f_mat, depth=h, use_limits=False)
+    # # end = time.time()
+    # # print(end - start)
+
+    # start = time.time()
+    # wavenumber_2 = dispersion(frequency=f_mat, depth=h_mat, use_limits=True)
+    # end = time.time()
+    # print(end - start)
+
+    # start = time.time()
+    # wavenumber_3 = dispersion(frequency=f_mat, depth=h_mat, use_limits=False)
+    # end = time.time()
+    # print(end - start)
+
+    # print(np.mean((wavenumber_2 - wavenumber_3)**2))
+    # print(wavenumber_1)
+    # print(wavenumber_2)
+    # print(wavenumber_3)
+    # #%%
+
+    # fig, ax = plt.subplots()
+    # ax.plot(h, wavenumber_1[:, 0])
+    # ax.plot(h, wavenumber_2[:, 0])
 
 
 if __name__ == "__main__":
