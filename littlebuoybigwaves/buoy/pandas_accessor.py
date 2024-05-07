@@ -1,10 +1,10 @@
 """
-Core module for LittleBuoyBigWaves Pandas interface.  Contains Dataframe
-accessors and associated methods.
+Pandas Dataframe buoy accessor and associated methods.
 """
 
 
 # TODO:
+# - Construct idxs by intersecting vars with index names?
 # - Many methods can be vectorized if all frequencies have the same shape...
 #   Might consider adding a check for uniform frequency arrays and subsequent
 #   pathways in methods.
@@ -26,10 +26,11 @@ from littlebuoybigwaves import waves, buoy
 from utilities import get_config
 
 
-#TODO: add default config!  try catch?
-config = get_config()['littlebuoybigwaves']
-config_idx = types.SimpleNamespace(**config['idxs'])
-config_cols = types.SimpleNamespace(**config['cols'])
+#TODO: add default config! try statement?
+config = get_config()['littlebuoybigwaves']['buoy']
+# config_idx = types.SimpleNamespace(**config['idxs'])
+# config_cols = types.SimpleNamespace(**config['cols'])
+config_vars = types.SimpleNamespace(**config['vars'])
 
 
 @pd.api.extensions.register_dataframe_accessor("buoy")
@@ -37,8 +38,9 @@ class BuoyDataFrameAccessor:
     def __init__(self, pandas_obj):
         self._validate(pandas_obj)
         self._obj = pandas_obj
-        self._cols = config_cols  # TODO: probably need a method to update and rename
-        self._idxs = config_idx
+        self._vars = config_vars
+        # self._cols = config_cols  # TODO: probably need a method to update and rename
+        # self._idxs = config_idx
         # self._spectral_variables = None # TODO: do not want to cache
 
     @staticmethod
@@ -56,15 +58,20 @@ class BuoyDataFrameAccessor:
         lon = self._obj.longitude
         return (float(lon.mean()), float(lat.mean()))
 
-    @property
-    def cols(self):
-        """ Return a SimpleNamespace with this DataFrame's column names. """
-        return self._cols
+    # @property
+    # def cols(self):
+    #     """ Return a SimpleNamespace with this DataFrame's column names. """
+    #     return self._cols
+
+    # @property
+    # def idxs(self):
+    #     """ Return a SimpleNamespace with this DataFrame's indice names. """
+    #     return self._idxs
 
     @property
-    def idxs(self):
-        """ Return a SimpleNamespace with this DataFrame's indice names. """
-        return self._idxs
+    def vars(self):
+        """ Return a SimpleNamespace with this DataFrame's variable names. """
+        return self._vars
 
     @property
     def spectral_variables(self) -> List:
@@ -75,7 +82,7 @@ class BuoyDataFrameAccessor:
         # Compare each column in size_df to the frequency column and return
         # only the matching columns, which should be spectral.
         is_spectral = size_df.apply(
-            lambda col: size_df[self.cols.frequency].equals(col)
+            lambda col: size_df[self.vars.frequency].equals(col)
         )
         return is_spectral.index[is_spectral].to_list()
 
@@ -90,7 +97,7 @@ class BuoyDataFrameAccessor:
         drifter_spectral_ds = (self._obj
                                .loc[:, self.spectral_variables]
                                .explode(self.spectral_variables)
-                               .set_index(self.cols.frequency, append=True)
+                               .set_index(self.vars.frequency, append=True)
                                .to_xarray())
 
         drifter_ds = xr.merge([drifter_bulk_ds, drifter_spectral_ds])
@@ -101,11 +108,11 @@ class BuoyDataFrameAccessor:
         """ Convert frequency to wavenumber and return it as a Series. """
         # If depth data is present, use the full relationship. Otherwise, only
         # the deep water relationship can be used.
-        if self.cols.depth in self._obj.columns:
+        if self.vars.depth in self._obj.columns:
             wavenumber = self._obj.apply(
                 lambda df: waves.dispersion(
-                    df[self.cols.frequency],
-                    np.array([df[self.cols.depth]]),
+                    df[self.vars.frequency],
+                    np.array([df[self.vars.depth]]),
                     **kwargs
                 ),
                 axis=1,
@@ -113,7 +120,7 @@ class BuoyDataFrameAccessor:
         else:
             wavenumber = self._obj.apply(
                 lambda df: waves.deep_water_dispersion(
-                    df[self.cols.frequency],
+                    df[self.vars.frequency],
                     **kwargs,
                 ),
                 axis=1,
@@ -124,8 +131,8 @@ class BuoyDataFrameAccessor:
         """ Calculate mean square slope and return it as a Series. """
         mean_square_slope = self._obj.apply(
                 lambda df: waves.mean_square_slope(
-                    energy_density=df[self.cols.energy_density],
-                    frequency=df[self.cols.frequency],
+                    energy_density=df[self.vars.energy_density],
+                    frequency=df[self.vars.frequency],
                     **kwargs,
                 ),
                 axis=1,
@@ -136,8 +143,8 @@ class BuoyDataFrameAccessor:
         """ Calculate energy-weighted period and return it as a Series. """
         energy_period = self._obj.apply(
                 lambda df: waves.energy_period(
-                    energy_density=df[self.cols.energy_density],
-                    frequency=df[self.cols.frequency],
+                    energy_density=df[self.vars.energy_density],
+                    frequency=df[self.vars.frequency],
                     **kwargs,
                 ),
                 axis=1,
@@ -150,8 +157,8 @@ class BuoyDataFrameAccessor:
         """
         direction = self._obj.apply(
                 lambda df: waves.direction(
-                    df[self.cols.a1],
-                    df[self.cols.b1],
+                    df[self.vars.a1],
+                    df[self.vars.b1],
                     **kwargs,
                 ),
                 axis=1,
@@ -165,8 +172,8 @@ class BuoyDataFrameAccessor:
         """
         directional_spread = self._obj.apply(
                 lambda df: waves.directional_spread(
-                    df[self.cols.a1],
-                    df[self.cols.b1],
+                    df[self.vars.a1],
+                    df[self.vars.b1],
                     **kwargs,
                 ),
                 axis=1,
@@ -179,8 +186,8 @@ class BuoyDataFrameAccessor:
         """
         #TODO: need to group by id for correct results
         drift_speed_mps, drift_dir_deg = buoy.drift_speed_and_direction(
-            longitude=self._obj[self.cols.longitude],
-            latitude=self._obj[self.cols.latitude],
+            longitude=self._obj[self.vars.longitude],
+            latitude=self._obj[self.vars.latitude],
             time=self._obj.index.get_level_values(level=self.idxs.time),
             append=True,
         )
@@ -191,27 +198,27 @@ class BuoyDataFrameAccessor:
         #TODO: need to group by id
         new_df = self._obj.copy(deep=False)  # TODO: confirm this is right
         # Calculate any missing columns.
-        if self.cols.wavenumber not in self._obj.columns:
-            new_df[self.cols.wavenumber] = new_df.buoy.frequency_to_wavenumber()
-        if self.cols.direction not in self._obj.columns:
-            new_df[self.cols.direction] = new_df.buoy.wave_direction()
-        if self.cols.drift_speed not in self._obj.columns:
-            new_df[self.cols.drift_speed], new_df[self.cols.drift_direction] \
+        if self.vars.wavenumber not in self._obj.columns:
+            new_df[self.vars.wavenumber] = new_df.buoy.frequency_to_wavenumber()
+        if self.vars.direction not in self._obj.columns:
+            new_df[self.vars.direction] = new_df.buoy.wave_direction()
+        if self.vars.drift_speed not in self._obj.columns:
+            new_df[self.vars.drift_speed], new_df[self.vars.drift_direction] \
                                     = new_df.buoy.drift_speed_and_direction()
 
         # Apply the Doppler correction to each frequency array. Results can be
         # added directly to the DataFrame copy using `result_type='expand'`.
         #TODO: can be vectorized if all frequencies have the same shape...
-        new_cols = [self.cols.absolute_frequency,
-                    self.cols.u_dot_k,
-                    self.cols.wave_drift_alignment]
+        new_cols = [self.vars.absolute_frequency,
+                    self.vars.u_dot_k,
+                    self.vars.wave_drift_alignment]
         new_df[new_cols] = new_df.apply(
             lambda df: buoy.doppler_correct(
-                drift_direction_going=np.array([df[self.cols.drift_direction]]),
-                wave_direction_coming=df[self.cols.direction],
-                drift_speed=np.array([df[self.cols.drift_speed]]),
-                intrinsic_frequency=df[self.cols.frequency],
-                wavenumber=df[self.cols.wavenumber],
+                drift_direction_going=np.array([df[self.vars.drift_direction]]),
+                wave_direction_coming=df[self.vars.direction],
+                drift_speed=np.array([df[self.vars.drift_speed]]),
+                intrinsic_frequency=df[self.vars.frequency],
+                wavenumber=df[self.vars.wavenumber],
             ),
             axis=1,
             result_type='expand',
@@ -223,21 +230,21 @@ class BuoyDataFrameAccessor:
         new_df = self._obj.copy(deep=False)
 
         # Calculate any missing columns.
-        if self.cols.wavenumber not in self._obj.columns:
-            new_df[self.cols.wavenumber] = new_df.buoy.frequency_to_wavenumber()
-        if self.cols.direction not in self._obj.columns:
-            new_df[self.cols.direction] = new_df.buoy.wave_direction()
-        if self.cols.drift_speed not in self._obj.columns:
-            new_df[self.cols.drift_speed], new_df[self.cols.drift_direction] \
+        if self.vars.wavenumber not in self._obj.columns:
+            new_df[self.vars.wavenumber] = new_df.buoy.frequency_to_wavenumber()
+        if self.vars.direction not in self._obj.columns:
+            new_df[self.vars.direction] = new_df.buoy.wave_direction()
+        if self.vars.drift_speed not in self._obj.columns:
+            new_df[self.vars.drift_speed], new_df[self.vars.drift_direction] \
                                     = new_df.buoy.drift_speed_and_direction()
 
         new_df['mean_square_slope_absolute'] = new_df.apply(  #TODO: use .cols
             lambda df: buoy.doppler_correct_mean_square_slope(
-                drift_direction_going=np.array([df[self.cols.drift_direction]]),
-                wave_direction_coming=df[self.cols.direction],
-                drift_speed=np.array([df[self.cols.drift_speed]]),
-                frequency=df[self.cols.frequency],
-                energy_density=df[self.cols.energy_density],
+                drift_direction_going=np.array([df[self.vars.drift_direction]]),
+                wave_direction_coming=df[self.vars.direction],
+                drift_speed=np.array([df[self.vars.drift_speed]]),
+                frequency=df[self.vars.frequency],
+                energy_density=df[self.vars.energy_density],
             ),
             axis=1,
         )
@@ -267,7 +274,7 @@ class BuoyDataFrameAccessor:
     #     # Compare each column in size_df to the frequency column and return
     #     # only the matching columns, which should be spectral.
     #     is_spectral = size_df.apply(
-    #         lambda col: size_df[self.cols.frequency].equals(col)
+    #         lambda col: size_df[self.vars.frequency].equals(col)
     #     )
     #     return is_spectral.index[is_spectral].to_list()
 
