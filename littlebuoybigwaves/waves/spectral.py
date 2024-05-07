@@ -194,7 +194,7 @@ def merge_frequencies(
 
     Args:
         energy_density (np.ndarray): 1-D energy density frequency spectrum with
-            shape (f,)
+            shape (f,) or (n, f).
         frequency (np.ndarray): 1-D frequencies with shape (f,).
         n_merge (int): number of adjacent frequencies to merge.
 

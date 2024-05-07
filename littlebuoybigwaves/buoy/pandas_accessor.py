@@ -9,6 +9,7 @@ accessors and associated methods.
 #   Might consider adding a check for uniform frequency arrays and subsequent
 #   pathways in methods.
 # - Create default namespace that can be intersected with config namespace
+# Default config cols file + read local config from current working directory.  Print if no local config found and intersect/use default cols
 
 __all__ = [
     "BuoyDataFrameAccessor",
@@ -25,7 +26,8 @@ from littlebuoybigwaves import waves, buoy
 from utilities import get_config
 
 
-config = get_config()
+#TODO: add default config!  try catch?
+config = get_config()['littlebuoybigwaves']
 config_idx = types.SimpleNamespace(**config['idxs'])
 config_cols = types.SimpleNamespace(**config['cols'])
 
