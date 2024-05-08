@@ -28,8 +28,6 @@ from utilities import get_config
 
 #TODO: add default config! try statement?
 config = get_config()['littlebuoybigwaves']['buoy']
-# config_idx = types.SimpleNamespace(**config['idxs'])
-# config_cols = types.SimpleNamespace(**config['cols'])
 config_vars = types.SimpleNamespace(**config['vars'])
 
 
@@ -39,9 +37,6 @@ class BuoyDataFrameAccessor:
         self._validate(pandas_obj)
         self._obj = pandas_obj
         self._vars = config_vars
-        # self._cols = config_cols  # TODO: probably need a method to update and rename
-        # self._idxs = config_idx
-        # self._spectral_variables = None # TODO: do not want to cache
 
     @staticmethod
     def _validate(obj):
@@ -57,16 +52,6 @@ class BuoyDataFrameAccessor:
         lat = self._obj.latitude
         lon = self._obj.longitude
         return (float(lon.mean()), float(lat.mean()))
-
-    # @property
-    # def cols(self):
-    #     """ Return a SimpleNamespace with this DataFrame's column names. """
-    #     return self._cols
-
-    # @property
-    # def idxs(self):
-    #     """ Return a SimpleNamespace with this DataFrame's indice names. """
-    #     return self._idxs
 
     @property
     def vars(self):
@@ -101,7 +86,7 @@ class BuoyDataFrameAccessor:
                                .to_xarray())
 
         drifter_ds = xr.merge([drifter_bulk_ds, drifter_spectral_ds])
-        drifter_ds[self.idxs.time] = pd.DatetimeIndex(drifter_ds[self.idxs.time].values)
+        drifter_ds[self.vars.time] = pd.DatetimeIndex(drifter_ds[self.vars.time].values)
         return drifter_ds
 
     def frequency_to_wavenumber(self, **kwargs) -> pd.Series:
@@ -188,7 +173,7 @@ class BuoyDataFrameAccessor:
         drift_speed_mps, drift_dir_deg = buoy.drift_speed_and_direction(
             longitude=self._obj[self.vars.longitude],
             latitude=self._obj[self.vars.latitude],
-            time=self._obj.index.get_level_values(level=self.idxs.time),
+            time=self._obj.index.get_level_values(level=self.vars.time),
             append=True,
         )
         return drift_speed_mps, drift_dir_deg
