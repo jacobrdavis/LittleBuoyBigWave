@@ -1,5 +1,6 @@
-"""TODO: module docstr"""
-
+"""
+Kinematics functions.
+"""
 
 # TODO:
 # - rename/unify functions and variables

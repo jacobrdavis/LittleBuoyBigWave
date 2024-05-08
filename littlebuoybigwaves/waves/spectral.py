@@ -19,7 +19,7 @@ __all__ = [
 ]
 
 import warnings
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 import numpy as np
 
@@ -31,7 +31,7 @@ TWO_PI = 2 * np.pi
 def mean_square_slope(
     energy_density: np.ndarray,
     frequency: np.ndarray,
-) -> Tuple[float, np.ndarray]:
+) -> Union[float, np.ndarray]:
     """
     Calculate spectral mean square slope as the fourth moment of the one-
     dimensional frequency spectrum.
@@ -60,7 +60,7 @@ def energy_period(
     energy_density: np.ndarray,
     frequency: np.ndarray,
     return_as_frequency: bool = False
-) -> Tuple[float, np.ndarray]:
+) -> Union[float, np.ndarray]:
     """
     Calculate energy-weighted frequency as the ratio of the first and zeroth
     moments of the one-dimensional frequency spectrum.
@@ -97,7 +97,7 @@ def spectral_moment(
     frequency: np.ndarray,
     n: float,
     axis: int = -1,
-) -> Tuple[float, np.ndarray]:
+) -> Union[float, np.ndarray]:
     """
     Compute the 'nth' spectral moment.
 
@@ -119,6 +119,7 @@ def spectral_moment(
 
 
 def moment_weighted_mean(arr, energy_density, frequency, n, axis=-1):
+    #TODO:
     moment_n = spectral_moment(energy_density=energy_density,
                                frequency=frequency,
                                n=n,
@@ -134,7 +135,7 @@ def moment_weighted_mean(arr, energy_density, frequency, n, axis=-1):
 def significant_wave_height(
     energy_density: np.ndarray,
     frequency: np.ndarray,
-) -> Tuple[float, np.ndarray]:
+) -> Union[float, np.ndarray]:
     """
     Calculate significant wave height as four times the square root of the
     spectral variance.
@@ -222,7 +223,7 @@ def merge_frequencies(
     return energy_density_merged, frequency_merged
 
 
-def _average_n_groups(arr, n_groups):
+def _average_n_groups(arr: np.ndarray, n_groups: int) -> np.ndarray:
     """
     Adapted from Divakar via https://stackoverflow.com/questions/53178018/
     average-of-elements-in-a-subarray.

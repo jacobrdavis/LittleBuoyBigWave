@@ -3,7 +3,7 @@ SWAN model functions.
 """
 
 # TODO:
-# -
+# - use config vars in Dataset creation
 
 __all__ = [
     "read_swan_spc2d",
@@ -111,7 +111,7 @@ def spc2d_to_xarray(spc2d_dict: dict) -> xr.Dataset:
     # Create core dataset from the directional energy density spectrum.
     ds = xr.Dataset(
         coords={
-            'frequency': (
+            'frequency': (  # TODO: use config var namespace here
                 'frequency',
                 spc2d_dict['AFREQ']['values'],
                 {'description': spc2d_dict['AFREQ']['description']},
@@ -123,7 +123,7 @@ def spc2d_to_xarray(spc2d_dict: dict) -> xr.Dataset:
             ),
         },
         data_vars={
-            'directional_energy_density': (
+            'frequency_direction_energy_density': (
                 ('frequency', 'direction'),
                 spc2d_dict['EnDens']['values'],
                 {'description': spc2d_dict['EnDens']['description']},

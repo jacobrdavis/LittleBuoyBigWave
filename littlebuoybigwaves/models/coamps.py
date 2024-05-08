@@ -1,5 +1,5 @@
 """
-A collection of functions for working with COAMPS-TC model data.
+COAMPS-TC model functions.
 """
 
 

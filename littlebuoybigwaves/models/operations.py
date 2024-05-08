@@ -1,6 +1,10 @@
 # TODO:
 # - rename/unify functions and variables
 
+# __all__ = [
+#     "read_swan_spc2d",
+#     "spc2d_to_xarray",
+# ]
 
 from typing import Iterable
 
@@ -11,10 +15,10 @@ import scipy
 def closest_value(x: float,X: Iterable): # lat,lon,latList, lonList):
     """
     Helper function to find index of closest value of x in list X
-    
     """
     Xidx = np.argmin(abs(X-x))
     return Xidx
+
 
 def match_model_and_buoy_by_interpolation(
     buoy: dict,
@@ -90,6 +94,88 @@ def match_model_and_buoy_by_interpolation(
             value = np.interp(buoy['time'][i].astype("float"),
                               np.array([model['time'][j-1],
                                         model['time'][j]]).astype("float"),
+                              np.concatenate([bilinear_value_jm1,
+                                              bilinear_value_j]))
+
+        field_matches.append(value)
+
+    return np.array(field_matches)
+
+
+def match_model_and_buoy_by_interpolation_new(
+    buoy_time,
+    buoy_longitude,
+    buoy_latitude,
+    model_time,
+    model_field,
+    model_longitude,
+    model_latitude,
+    temporal_tolerance: np.timedelta64 = np.timedelta64(30, 'm'),
+    **interpn_kwargs,
+):
+    """
+    Match model and buoy observations using linear interpolation in time
+    and bilinear interpolation in space.
+
+    Note: the `buoy_time` and `model_time` arrays must be sorted.
+
+    Args:
+        buoy_time (np.array[datetime64]): buoy observation times.
+        buoy_longitude (np.array[float]): buoy longitudes.
+        buoy_latitude (np.array[float]): buoy latitudes.
+        model_time (np.array[datetime64]): model observation times.
+        model_field (np.array): model field variable to be matched onto
+            the buoy coordinates.
+        model_longitude (np.array[float]): model longitudes.
+        model_latitude (np.array[float]): model latitudes.
+        temporal_tolerance (np.timedelta64, optional): maximum allowable
+        time difference between a model and observation point. Defaults
+        to np.timedelta64(30, 'm').
+        **interpn_kwargs: Remaining keyword arguments passed to scipy.interpn.
+
+    Returns:
+        np.ndarray: interpolated field values for each time in `buoy_time`.
+    """
+    if 'method' not in interpn_kwargs:
+        interpn_kwargs['method'] = 'linear'
+    if 'bounds_error' not in interpn_kwargs:
+        interpn_kwargs['bounds_error'] = True
+
+    t_sort_indices = np.searchsorted(model_time, buoy_time)
+
+    # Adjust the sort indices so that the final index is not greater
+    # than the length of the array.  If so, replace with the last index.
+    n = model_time.size
+    t_sort_indices[t_sort_indices >= n] = n - 1
+
+    field_matches = []
+
+    points = (model_latitude, model_longitude)
+    for i, j in enumerate(t_sort_indices):
+
+        time_difference = np.abs(buoy_time[i] - model_time[j])
+
+        if time_difference > temporal_tolerance:
+            value = np.nan
+        else:
+            x_i = (buoy_latitude[i], buoy_longitude[i])
+
+            field_values_jm1 = model_field[j-1]  # left
+            field_values_j = model_field[j]  # right
+
+            bilinear_value_jm1 = scipy.interpolate.interpn(points,
+                                                           field_values_jm1,
+                                                           x_i,
+                                                           **interpn_kwargs)
+
+            bilinear_value_j = scipy.interpolate.interpn(points,
+                                                         field_values_j,
+                                                         x_i,
+                                                         **interpn_kwargs)
+
+            value = np.interp(buoy_time[i].astype("float"),
+                              np.array([model_time[j-1],
+                                        model_time[j]]).astype("float"),
                               np.concatenate([bilinear_value_jm1,
                                               bilinear_value_j]))
 
