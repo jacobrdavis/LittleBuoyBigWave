@@ -22,21 +22,17 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from littlebuoybigwaves import waves, buoy
-from utilities import get_config
+from littlebuoybigwaves import waves, buoy, utilities
 
-
-#TODO: add default config! try statement?
-config = get_config()['littlebuoybigwaves']['buoy']
-config_vars = types.SimpleNamespace(**config['vars'])
-
+#TODO: add default config!
+var_namespace = utilities.get_var_namespace(subset='buoy')
 
 @pd.api.extensions.register_dataframe_accessor("buoy")
 class BuoyDataFrameAccessor:
     def __init__(self, pandas_obj):
         self._validate(pandas_obj)
         self._obj = pandas_obj
-        self._vars = config_vars
+        self._vars = var_namespace
 
     @staticmethod
     def _validate(obj):
@@ -165,7 +161,7 @@ class BuoyDataFrameAccessor:
             )
         return directional_spread
 
-    def drift_speed_and_direction(self) -> Tuple[pd.Series, pd.Series]:
+    def drift_speed_and_direction(self) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculate drift speed and direction and return each as as Series.
         """
@@ -177,6 +173,38 @@ class BuoyDataFrameAccessor:
             append=True,
         )
         return drift_speed_mps, drift_dir_deg
+
+    def wavenumber_energy_density(self, **kwargs) -> pd.DataFrame:
+        """
+        Convert frequency domain wave energy density to wavenumber domain
+        energy density and return a DataFrame with the energy and wavenumber.
+        """
+        wavenumber_energy_density = self._obj.apply(
+            lambda df: waves.fq_energy_to_wn_energy(
+                energy_density_fq=df[self.vars.energy_density],
+                frequency=df[self.vars.frequency],
+                depth=df[self.vars.depth],
+                **kwargs,
+            ),
+            result_type='expand',
+            axis=1,
+            #TODO: raw = True,
+        )
+        #TODO: name columns?
+        return wavenumber_energy_density
+
+    def moment_weighted_mean(self, column: str, n: int = 0) -> pd.Series:
+        """ Return the nth moment-weighted mean of a column as a Series. """
+        moment_weighted_mean_series = self._obj.apply(
+            lambda df: waves.moment_weighted_mean(
+                arr=df[column],
+                energy_density=df[self.vars.energy_density],
+                frequency=df[self.vars.frequency],
+                n=n,
+            ),
+            axis=1,
+        )
+        return moment_weighted_mean_series
 
     def doppler_correct(self) -> pd.DataFrame:
         """ Doppler correct frequencies and return a new DataFrame."""
@@ -247,7 +275,7 @@ class BuoyDataFrameAccessor:
 #     def __init__(self, pandas_obj):
 #         self._validate(pandas_obj)
 #         self._obj = pandas_obj
-#         self._idxs = default_idxs
+#         # self._idxs = default_idxs
 
     #TODO:
     # @property

@@ -15,14 +15,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from littlebuoybigwaves import waves, buoy
-from utilities import get_config
+from littlebuoybigwaves import waves, buoy, utilities
 
-
-#TODO: add default config! try statement?
-config = get_config()['littlebuoybigwaves']['model']
-config_vars = types.SimpleNamespace(**config['vars'])
-
+#TODO: add default config!
+var_namespace = utilities.get_var_namespace(subset='model')
 
 @xr.register_dataset_accessor("model")
 class ModelDatasetAccessor:
@@ -30,7 +26,7 @@ class ModelDatasetAccessor:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
         self._center = None
-        self._vars = config_vars
+        self._vars = var_namespace
 
     @property
     def center(self):
@@ -80,3 +76,5 @@ class ModelDataArrayAccessor:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
         self._center = None
+
+        #TODO: spectal var, etc.

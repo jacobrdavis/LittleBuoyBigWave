@@ -16,6 +16,7 @@ __all__ = [
     'directional_spread',
     'moment_weighted_mean',
     'merge_frequencies',
+    'fq_energy_to_wn_energy',
 ]
 
 import warnings
@@ -23,6 +24,7 @@ from typing import Tuple, Optional, Union
 
 import numpy as np
 
+from littlebuoybigwaves import waves
 
 ACCELERATION_OF_GRAVITY = 9.81  # (m/s^2)
 TWO_PI = 2 * np.pi
@@ -238,3 +240,84 @@ def _average_n_groups(arr: np.ndarray, n_groups: int) -> np.ndarray:
     w[:n - m*n_groups] += 1
     sums = np.add.reduceat(arr, np.r_[0, w.cumsum()[:-1]])
     return sums / w
+
+
+def fq_energy_to_wn_energy(
+    energy_density_fq: np.ndarray,
+    frequency: np.ndarray,
+    depth: Union[float, np.ndarray] = np.inf,
+    var_rtol: float = 0.02,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """ Transform energy density from frequency to wavenumber space.
+
+    Transform energy density, defined in the frequency domain, to energy
+    density on a wavenumber domain using the appropriate Jacobians:
+
+    E(k) = E(w) dw/dk
+
+    and
+
+    E(w) = E(k) dk/dw
+
+    where dw/dk is equivalent to the group velocity and dk/dw = 1/(2pi) [1].
+    This conversion relies on the (inverse) linear dispersion relationship to
+    calculate wavenumbers from the provided frequencies.
+
+    References:
+        1. L. H. Holthuijsen (2007) Waves in Oceanic and Coastal Waters,
+        Cambridge University Press
+
+    Args:
+        energy_density_fq (np.ndarray): 1-D energy density frequency spectrum
+            with shape (f,) or (n, f).
+        frequency (np.ndarray): 1-D frequencies with shape (f,).
+        depth (float, optional): water depth (positive down) with shape (n,).
+            Defaults to np.inf.
+        var_rtol (float, optional): relative tolerance passed to np.isclose
+            to check variance equality. Defaults to 0.02.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: energy density in wavenumber domain and
+            the corresponding wavenumbers.
+    """
+    if np.isscalar(depth):
+        depth = np.array([depth])
+
+    wavenumber = waves.dispersion(frequency, depth).squeeze()
+    dw_dk = waves.intrinsic_group_velocity(wavenumber, frequency, depth)
+    df_dw = 1 / (2*np.pi)
+    energy_density_wn = energy_density_fq * df_dw * dw_dk
+    var_match = check_spectral_variance(energy_density_wn, wavenumber,
+                                        energy_density_fq, frequency,
+                                        rtol=var_rtol)
+    if not var_match:
+        raise ValueError('Variance mismatch')
+
+    return energy_density_wn, wavenumber
+
+
+def check_spectral_variance(
+    energy_density_wn: np.ndarray,
+    wavenumber: np.ndarray,
+    energy_density_fq: np.ndarray,
+    frequency: np.ndarray,
+    **kwargs
+) -> bool:
+    """Check for variance equality between wavenumber and frequency spectra.
+
+    Note: Tolerances are specified using the absolute (atol) and relative
+    (rtol) tolerance arguments passed to np.isclose via **kwargs.
+
+    Args:
+        energy_density_wn (np.ndarray): energy density in wavenumber domain.
+        wavenumber (np.ndarray): wavenumber array.
+        energy_density_fq (np.ndarray): energy density in frequency domain.
+        frequency (np.ndarray): frequency array.
+        **kwargs: Additional kwarg arguments are passed to np.isclose.
+
+    Returns:
+        bool: True if variance matches within tolerance.
+    """
+    var_wn = np.trapz(energy_density_wn, x=wavenumber)
+    var_fq = np.trapz(energy_density_fq, x=frequency)
+    return np.isclose(var_wn, var_fq, **kwargs)
