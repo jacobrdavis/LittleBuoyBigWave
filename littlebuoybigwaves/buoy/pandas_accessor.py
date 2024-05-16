@@ -120,6 +120,20 @@ class BuoyDataFrameAccessor:
             )
         return mean_square_slope
 
+    def wavenumber_mean_square_slope(self, **kwargs) -> pd.Series:
+        """
+        Calculate wavenumber mean square slope and return it as a Series.
+        """
+        wavenumber_mean_square_slope = self._obj.apply(
+                lambda df: waves.wavenumber_mean_square_slope(
+                    energy_density_wn=df[self.vars.energy_density_wn],
+                    wavenumber=df[self.vars.wavenumber],
+                    **kwargs,
+                ),
+                axis=1,
+            )
+        return wavenumber_mean_square_slope
+
     def energy_period(self, **kwargs) -> pd.Series:
         """ Calculate energy-weighted period and return it as a Series. """
         energy_period = self._obj.apply(
@@ -161,9 +175,9 @@ class BuoyDataFrameAccessor:
             )
         return directional_spread
 
-    def drift_speed_and_direction(self) -> Tuple[np.ndarray, np.ndarray]:
+    def drift_speed_and_direction(self) -> pd.DataFrame:
         """
-        Calculate drift speed and direction and return each as as Series.
+        Calculate drift speed and direction and return in a DataFrame.
         """
         #TODO: need to group by id for correct results
         drift_speed_mps, drift_dir_deg = buoy.drift_speed_and_direction(
@@ -172,7 +186,16 @@ class BuoyDataFrameAccessor:
             time=self._obj.index.get_level_values(level=self.vars.time),
             append=True,
         )
-        return drift_speed_mps, drift_dir_deg
+        drift_df = pd.DataFrame(
+            data={
+                self.vars.drift_speed: drift_speed_mps,
+                self.vars.drift_direction: drift_dir_deg,
+            },
+            index=self._obj.index
+        )
+        return drift_df
+
+        # return drift_speed_mps, drift_dir_deg
 
     def wavenumber_energy_density(self, **kwargs) -> pd.DataFrame:
         """
@@ -216,7 +239,7 @@ class BuoyDataFrameAccessor:
         if self.vars.direction not in self._obj.columns:
             new_df[self.vars.direction] = new_df.buoy.wave_direction()
         if self.vars.drift_speed not in self._obj.columns:
-            new_df[self.vars.drift_speed], new_df[self.vars.drift_direction] \
+            new_df[[self.vars.drift_speed, self.vars.drift_direction]] \
                                     = new_df.buoy.drift_speed_and_direction()
 
         # Apply the Doppler correction to each frequency array. Results can be

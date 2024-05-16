@@ -9,6 +9,7 @@ Spectral water wave functions.
 
 __all__ = [
     'mean_square_slope',
+    'wavenumber_mean_square_slope',
     'energy_period',
     'spectral_moment',
     'significant_wave_height',
@@ -56,6 +57,27 @@ def mean_square_slope(
                                     n=4,
                                     axis=-1)
     return (TWO_PI**4 * fourth_moment) / (ACCELERATION_OF_GRAVITY**2)
+
+
+def wavenumber_mean_square_slope(
+    energy_density_wn: np.ndarray,
+    wavenumber: np.ndarray
+) -> np.ndarray:
+    """
+    Calculate mean square slope as the second moment of the one-dimensional
+    wavenumber spectrum.
+
+    Args:
+        energy_density_wn (np.ndarray): 1-D energy density wavenumber spectrum
+            with shape (k,) or (n, k).
+        wavenumber (np.ndarray): 1-D wavenumbers with shape (k,).
+
+    Returns:
+    Mean square slope as a
+        float: if the shape of `energy_density` is (k,).
+        np.ndarray: if the shape of `energy_density` is (n, k).
+    """
+    return np.trapz(y=energy_density_wn * wavenumber**2, x=wavenumber, axis=-1)
 
 
 def energy_period(
