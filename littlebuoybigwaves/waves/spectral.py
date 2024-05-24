@@ -34,6 +34,8 @@ TWO_PI = 2 * np.pi
 def mean_square_slope(
     energy_density: np.ndarray,
     frequency: np.ndarray,
+    min_frequency: Optional[float] = None,
+    max_frequency: Optional[float] = None,
 ) -> Union[float, np.ndarray]:
     """
     Calculate spectral mean square slope as the fourth moment of the one-
@@ -43,6 +45,8 @@ def mean_square_slope(
         energy_density (np.ndarray): 1-D energy density frequency spectrum with
             shape (f,) or (n, f).
         frequency (np.ndarray): 1-D frequencies with shape (f,).
+        min_frequency (float, optional): lower frequency bound.
+        max_frequency (float, optional): upper frequency bound.
 
     Returns:
     Mean square slope as a
@@ -52,6 +56,19 @@ def mean_square_slope(
     energy_density = np.asarray(energy_density)
     frequency = np.asarray(frequency)
 
+    if min_frequency is None:
+        min_frequency = frequency.min()
+
+    if max_frequency is None:
+        max_frequency = frequency.max()
+
+    # Mask frequencies outside of the specified range.
+    frequency_mask = np.logical_and(frequency >= min_frequency,
+                                    frequency <= max_frequency)
+    frequency = frequency[frequency_mask]
+    energy_density = energy_density[..., frequency_mask]
+
+    # Calculate the fourth moment of the energy density spectrum.
     fourth_moment = spectral_moment(energy_density=energy_density,
                                     frequency=frequency,
                                     n=4,
@@ -209,18 +226,53 @@ def directional_spread(a1, b1):
     return directional_spread_rad  # np.rad2deg(directional_spread_rad)
 
 
+# def merge_frequencies(
+#     energy_density: np.ndarray,
+#     frequency: np.ndarray,
+#     n_merge: int,
+# ) -> Tuple[np.ndarray, np.ndarray]:
+#     """
+#     Merge neighboring frequencies in a spectrum.
+
+#     Args:
+#         energy_density (np.ndarray): 1-D energy density frequency spectrum with
+#             shape (f,) or (n, f).
+#         frequency (np.ndarray): 1-D frequencies with shape (f,).
+#         n_merge (int): number of adjacent frequencies to merge.
+
+#     Returns:
+#         Tuple[np.ndarray, np.ndarray]: merged energy density and frequency.
+
+#     Example:
+#     ```
+#     >>> frequency = np.arange(0, 9, 1)
+#     array([0, 1, 2, 3, 4, 5, 6, 7, 8])
+
+#     >>> energy_density = frequency * 3
+#     array([ 0,  3,  6,  9, 12, 15, 18, 21, 24])
+
+#     >>> merge_frequencies(energy_density, frequency, n_merge=3)
+#     (array([1., 4., 7.]), array([ 3., 12., 21.]))
+#     ```
+#     """
+#     n_groups = len(frequency) // n_merge
+#     frequency_merged = _average_n_groups(frequency, n_groups)
+#     energy_density_merged = np.apply_along_axis(_average_n_groups,
+#                                                 axis=-1,
+#                                                 arr=energy_density,
+#                                                 n_groups=n_groups)
+#     return energy_density_merged, frequency_merged
+
+
 def merge_frequencies(
-    energy_density: np.ndarray,
-    frequency: np.ndarray,
+    spectrum: np.ndarray,
     n_merge: int,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> np.ndarray:
     """
     Merge neighboring frequencies in a spectrum.
 
     Args:
-        energy_density (np.ndarray): 1-D energy density frequency spectrum with
-            shape (f,) or (n, f).
-        frequency (np.ndarray): 1-D frequencies with shape (f,).
+        spectrum (np.ndarray): 1-D frequency spectrum with shape (f,) or (n, f).
         n_merge (int): number of adjacent frequencies to merge.
 
     Returns:
@@ -234,17 +286,20 @@ def merge_frequencies(
     >>> energy_density = frequency * 3
     array([ 0,  3,  6,  9, 12, 15, 18, 21, 24])
 
-    >>> merge_frequencies(energy_density, frequency, n_merge=3)
-    (array([1., 4., 7.]), array([ 3., 12., 21.]))
+    >>> merge_frequencies(frequency, n_merge=3)
+    array([1., 4., 7.])
+
+    >>> merge_frequencies(energy_density, n_merge=3)
+    array([ 3., 12., 21.])
     ```
     """
-    n_groups = len(frequency) // n_merge
-    frequency_merged = _average_n_groups(frequency, n_groups)
-    energy_density_merged = np.apply_along_axis(_average_n_groups,
-                                                axis=-1,
-                                                arr=energy_density,
-                                                n_groups=n_groups)
-    return energy_density_merged, frequency_merged
+    n_frequencies = spectrum.shape[-1]
+    n_groups = n_frequencies // n_merge
+    spectrum_merged = np.apply_along_axis(_average_n_groups,
+                                          axis=-1,
+                                          arr=spectrum,
+                                          n_groups=n_groups)
+    return spectrum_merged
 
 
 def _average_n_groups(arr: np.ndarray, n_groups: int) -> np.ndarray:

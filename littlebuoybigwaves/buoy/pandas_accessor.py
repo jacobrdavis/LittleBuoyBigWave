@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 import types
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
@@ -108,12 +108,22 @@ class BuoyDataFrameAccessor:
             )
         return wavenumber
 
-    def mean_square_slope(self, **kwargs) -> pd.Series:
+    def mean_square_slope(
+        self,
+        energy_density_col: Optional[str] = None,
+        frequency_col: Optional[str] = None,
+        **kwargs
+    ) -> pd.Series:
         """ Calculate mean square slope and return it as a Series. """
+        if energy_density_col is None:
+            energy_density_col = self.vars.energy_density
+        if frequency_col is None:
+            frequency_col = self.vars.frequency
+
         mean_square_slope = self._obj.apply(
                 lambda df: waves.mean_square_slope(
-                    energy_density=df[self.vars.energy_density],
-                    frequency=df[self.vars.frequency],
+                    energy_density=df[energy_density_col],
+                    frequency=df[frequency_col],
                     **kwargs,
                 ),
                 axis=1,
@@ -175,6 +185,19 @@ class BuoyDataFrameAccessor:
             )
         return directional_spread
 
+    def moment_weighted_mean(self, column: str, n: int = 0) -> pd.Series:
+        """ Return the nth moment-weighted mean of a column as a Series. """
+        moment_weighted_mean_series = self._obj.apply(
+            lambda df: waves.moment_weighted_mean(
+                arr=df[column],
+                energy_density=df[self.vars.energy_density],
+                frequency=df[self.vars.frequency],
+                n=n,
+            ),
+            axis=1,
+        )
+        return moment_weighted_mean_series
+
     def drift_speed_and_direction(self) -> pd.DataFrame:
         """
         Calculate drift speed and direction and return in a DataFrame.
@@ -193,9 +216,8 @@ class BuoyDataFrameAccessor:
             },
             index=self._obj.index
         )
+        #TODO: name columns so sub df can be merged
         return drift_df
-
-        # return drift_speed_mps, drift_dir_deg
 
     def wavenumber_energy_density(self, **kwargs) -> pd.DataFrame:
         """
@@ -216,30 +238,70 @@ class BuoyDataFrameAccessor:
         #TODO: name columns?
         return wavenumber_energy_density
 
-    def moment_weighted_mean(self, column: str, n: int = 0) -> pd.Series:
-        """ Return the nth moment-weighted mean of a column as a Series. """
-        moment_weighted_mean_series = self._obj.apply(
-            lambda df: waves.moment_weighted_mean(
-                arr=df[column],
-                energy_density=df[self.vars.energy_density],
-                frequency=df[self.vars.frequency],
-                n=n,
-            ),
-            axis=1,
-        )
-        return moment_weighted_mean_series
+    def merge_frequencies(
+        self,
+        n_merge: int,
+        spectral_cols: Optional[List[str]] = None,
+        frequency_col: Optional[str] = None,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Return spectral columns with `n` merged frequencies in a new DataFrame.
+        """
+        if frequency_col is None:
+            frequency_col = self.vars.frequency
 
-    def doppler_correct(self) -> pd.DataFrame:
+        if spectral_cols is None:
+            spectral_cols = self.spectral_variables
+
+        merged_spectra = []
+        for col in spectral_cols:
+            merged_spectrum = self._obj.apply(
+                    lambda df: waves.merge_frequencies(
+                        spectrum=df[col],
+                        n_merge=n_merge,
+                        **kwargs,
+                    ),
+                    axis=1,
+                )
+            merged_spectrum.name = col  #  + '_merged'
+            merged_spectra.append(merged_spectrum)
+
+        # Concatenate the columns into a single DataFrame.
+        return pd.concat(merged_spectra, axis=1)
+
+    def doppler_correct(
+        self,
+        frequency_col: Optional[str] = None,
+        wavenumber_col: Optional[str] = None,
+        direction_col: Optional[str] = None,
+        drift_speed_col: Optional[str] = None,
+        drift_direction_col: Optional[str] = None,
+    ) -> pd.DataFrame:
         """ Doppler correct frequencies and return a new DataFrame."""
         #TODO: need to group by id
+
+        # TODO: this is not elegant
+        if frequency_col is None:
+            frequency_col = self.vars.frequency
+        if wavenumber_col is None:
+            wavenumber_col = self.vars.wavenumber
+        if direction_col is None:
+            direction_col = self.vars.direction
+        if drift_speed_col is None:
+            drift_speed_col = self.vars.drift_speed
+        if drift_direction_col is None:
+            drift_direction_col = self.vars.drift_direction
+
         new_df = self._obj.copy(deep=False)  # TODO: confirm this is right
+
         # Calculate any missing columns.
-        if self.vars.wavenumber not in self._obj.columns:
-            new_df[self.vars.wavenumber] = new_df.buoy.frequency_to_wavenumber()
-        if self.vars.direction not in self._obj.columns:
-            new_df[self.vars.direction] = new_df.buoy.wave_direction()
-        if self.vars.drift_speed not in self._obj.columns:
-            new_df[[self.vars.drift_speed, self.vars.drift_direction]] \
+        if wavenumber_col not in self._obj.columns:
+            new_df[wavenumber_col] = new_df.buoy.frequency_to_wavenumber()
+        if direction_col not in self._obj.columns:
+            new_df[direction_col] = new_df.buoy.wave_direction()
+        if drift_speed_col not in self._obj.columns:
+            new_df[[drift_speed_col, drift_direction_col]] \
                                     = new_df.buoy.drift_speed_and_direction()
 
         # Apply the Doppler correction to each frequency array. Results can be
@@ -250,11 +312,11 @@ class BuoyDataFrameAccessor:
                     self.vars.wave_drift_alignment]
         new_df[new_cols] = new_df.apply(
             lambda df: buoy.doppler_correct(
-                drift_direction_going=np.array([df[self.vars.drift_direction]]),
-                wave_direction_coming=df[self.vars.direction],
-                drift_speed=np.array([df[self.vars.drift_speed]]),
-                intrinsic_frequency=df[self.vars.frequency],
-                wavenumber=df[self.vars.wavenumber],
+                drift_direction_going=np.array([df[drift_direction_col]]),
+                wave_direction_coming=df[direction_col],
+                drift_speed=np.array([df[drift_speed_col]]),
+                intrinsic_frequency=df[frequency_col],
+                wavenumber=df[wavenumber_col],
             ),
             axis=1,
             result_type='expand',
