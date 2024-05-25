@@ -33,7 +33,6 @@ class BuoyDataFrameAccessor:
         self._validate(pandas_obj)
         self._obj = pandas_obj
         self._vars = var_namespace
-        self._uniform_frequency = False
 
     @staticmethod
     def _validate(obj):
@@ -58,32 +57,13 @@ class BuoyDataFrameAccessor:
     @property
     def spectral_variables(self) -> List:
         """ Return a list of spectral variables in the DataFrame. """
-        # Compare each column in size_df to the frequency column and return
-        # only the matching columns, which should be spectral.
-        # size_df = self._get_element_sizes()
-        # is_spectral = size_df.apply(
-        #     lambda col: size_df[self.vars.frequency].equals(col)
-        # )
-        # spectral_variables = is_spectral.index[is_spectral].to_list()
-        spectral_variable_names = self._get_spectral_variables()[0]
-        return spectral_variable_names
-
+        return self._get_spectral_variables()[0]
 
     @property
     def uniform_frequency(self) -> bool:
         """ Return True if all frequency arrays have the same shape. """
-        # if size_df is None:
-        #     size_df = self._get_element_sizes()
-        # if spectral_variables is None:
-        #     spectral_variables = self.spectral_variables
-        # size_df = self._get_element_sizes()
-        # unique_spectral_sizes = (size_df.loc[:, self.spectral_variables]
-        #                          .apply(pd.unique, axis=0))
-
         spectral_size_df = self._get_spectral_variables()[1]
-
         unique_spectral_sizes = spectral_size_df.apply(pd.unique, axis=0)
-
         return len(unique_spectral_sizes) == 1
 
     def _get_element_sizes(self) -> pd.DataFrame:
@@ -91,7 +71,8 @@ class BuoyDataFrameAccessor:
         # Apply np.size element-wise to generate a DataFrame of sizes
         return self._obj.applymap(np.size, na_action='ignore')
 
-    def _get_spectral_variables(self):
+    def _get_spectral_variables(self) -> Tuple[List, pd.DataFrame]:
+        " Return spectral variable names as a List and sizes as a DataFrame."
         # Compare each column in size_df to the frequency column and return
         # only the matching columns, which should be spectral.
         size_df = self._get_element_sizes()
