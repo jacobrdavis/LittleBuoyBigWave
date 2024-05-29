@@ -1,5 +1,5 @@
 """
-Unit tests for the models sub-package.
+Unit tests for the models submodule.
 
 TODO:
     - x
@@ -15,7 +15,8 @@ import numpy as np
 # from littlebuoybigwaves.models import gfs_tools as gfs
 # from littlebuoybigwaves.models import era5_tools as era5
 # from littlebuoybigwaves.models import coamps_tools as coamps
-import models
+# import models
+from littlebuoybigwaves import models
 
 # class TestGfsTools(unittest.TestCase):
 #     """ Unit tests for gfs tools submodule """

@@ -159,6 +159,7 @@ def spectral_moment(
     return moment_n
 
 
+#TODO: can accept no frequency if n=0 (make it NaN)
 def moment_weighted_mean(arr, energy_density, frequency, n, axis=-1):
     #TODO:
     moment_n = spectral_moment(energy_density=energy_density,
@@ -369,7 +370,7 @@ def fq_energy_to_wn_energy(
                                         rtol=var_rtol)
     if not var_match:
         raise ValueError('Variance mismatch')
-
+        #TODO: should replace with NaN here
     return energy_density_wn, wavenumber
 
 

@@ -1,5 +1,5 @@
 """ 
-Unit tests for the waves sub-package.
+Unit tests for the waves submodule.
 
 TODO:
     - write unit tests for spectral_wave_tools
@@ -10,7 +10,9 @@ TODO:
 import unittest
 
 import numpy as np
-import waves
+
+# import waves
+from littlebuoybigwaves import waves
 
 
 class TestSpectralWaveTools(unittest.TestCase):

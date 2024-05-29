@@ -20,7 +20,23 @@ from .colormapping import create_colorbar
 from typing import Tuple
 
 
-def spectrogram(time, frequency, z, ax=None, pcolormesh_kwargs={}):
+default_spectrogram_kwargs = {
+    'cmap': 'Spectral_r',
+    'norm': mpl.colors.LogNorm(vmin=None, vmax=None, clip=False)
+}
+
+
+def _set_kwarg_defaults(kwargs, default_kwargs):
+    for key in default_kwargs.keys():
+        if key not in kwargs:
+            kwargs[key] = default_kwargs[key]
+    return kwargs
+
+
+def spectrogram(time, frequency, z, ax=None, **pcolormesh_kwargs):
+
+    pcolormesh_kwargs = _set_kwarg_defaults(pcolormesh_kwargs,
+                                            default_spectrogram_kwargs)
 
     if ax is None:
         ax = plt.gca()
@@ -39,16 +55,10 @@ def spectrogram(time, frequency, z, ax=None, pcolormesh_kwargs={}):
         pass
     else:
         raise ValueError('`time` and `frequency` shapes do not match `z`.')
-    pcm = ax.pcolormesh(time,
-                        frequency,
-                        z,
-                        **pcolormesh_kwargs)
+
+    pcm = ax.pcolormesh(time, frequency, z, **pcolormesh_kwargs)
 
     return pcm
-
-
-
-
 
 
 def comparison_plot(

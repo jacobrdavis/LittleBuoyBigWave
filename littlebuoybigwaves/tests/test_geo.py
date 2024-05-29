@@ -1,5 +1,5 @@
 """
-Unit tests for the geo sub-package.
+Unit tests for the geo submodule.
 """
 
 import unittest
@@ -7,7 +7,8 @@ import unittest
 import numpy as np
 
 # from littlebuoybigwaves.geo import geodesy as geo
-import geo
+# import geo
+from littlebuoybigwaves import geo
 
 
 class TestGeographyTools(unittest.TestCase):
