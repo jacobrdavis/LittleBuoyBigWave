@@ -4,6 +4,7 @@ Pandas Dataframe buoy accessor and associated methods.
 
 
 # TODO:
+# - Output DataFrames as individual series? (named?)
 # - Construct idxs by intersecting vars with index names?
 # - Many methods can be vectorized if all frequencies have the same shape...
 #   Might consider adding a check for uniform frequency arrays and subsequent
@@ -172,29 +173,49 @@ class BuoyDataFrameAccessor:
             )
         return energy_period
 
-    def wave_direction(self, **kwargs) -> pd.Series:
+    def wave_direction(
+        self,
+        a1_col: Optional[str] = None,
+        b1_col: Optional[str] = None,
+        **kwargs
+    ) -> pd.Series:
         """
         Calculate wave direction per frequency and return it as a Series.
         """
+        if a1_col is None:
+            a1_col = self.vars.a1
+        if b1_col is None:
+            b1_col = self.vars.b1
+
         direction = self._obj.apply(
                 lambda df: waves.direction(
-                    df[self.vars.a1],
-                    df[self.vars.b1],
+                    df[a1_col],
+                    df[b1_col],
                     **kwargs,
                 ),
                 axis=1,
             )
         return direction
 
-    def wave_directional_spread(self, **kwargs) -> pd.Series:
+    def wave_directional_spread(
+        self,
+        a1_col: Optional[str] = None,
+        b1_col: Optional[str] = None,
+        **kwargs
+    ) -> pd.Series:
         """
         Calculate wave directional spread per frequency and return it as a
         Series.
         """
+        if a1_col is None:
+            a1_col = self.vars.a1
+        if b1_col is None:
+            b1_col = self.vars.b1
+
         directional_spread = self._obj.apply(
                 lambda df: waves.directional_spread(
-                    df[self.vars.a1],
-                    df[self.vars.b1],
+                    df[a1_col],
+                    df[b1_col],
                     **kwargs,
                 ),
                 axis=1,
@@ -219,6 +240,9 @@ class BuoyDataFrameAccessor:
         Calculate drift speed and direction and return in a DataFrame.
         """
         #TODO: need to group by id for correct results
+        #  = self._obj.groupby(level='id', as_index=True, group_keys=False).apply(
+        #     lambda df: df.buoy.drift_speed_and_direction()
+        # )
         drift_speed_mps, drift_dir_deg = buoy.drift_speed_and_direction(
             longitude=self._obj[self.vars.longitude],
             latitude=self._obj[self.vars.latitude],
@@ -286,59 +310,117 @@ class BuoyDataFrameAccessor:
         # Concatenate the columns into a single DataFrame.
         return pd.concat(merged_spectra, axis=1)
 
+    #TODO: delete:
     def doppler_correct(
+            self,
+            frequency_col: Optional[str] = None,
+            wavenumber_col: Optional[str] = None,
+            direction_col: Optional[str] = None,
+            drift_speed_col: Optional[str] = None,
+            drift_direction_col: Optional[str] = None,
+        ) -> pd.DataFrame:
+            """ Doppler correct frequencies and return a new DataFrame."""
+            #TODO: need to group by id
+
+            # TODO: this is not elegant
+            if frequency_col is None:
+                frequency_col = self.vars.frequency
+            if wavenumber_col is None:
+                wavenumber_col = self.vars.wavenumber
+            if direction_col is None:
+                direction_col = self.vars.direction
+            if drift_speed_col is None:
+                drift_speed_col = self.vars.drift_speed
+            if drift_direction_col is None:
+                drift_direction_col = self.vars.drift_direction
+
+            new_df = self._obj.copy(deep=False)  # TODO: confirm this is right
+
+            # Calculate any missing columns.
+            if wavenumber_col not in self._obj.columns:
+                new_df[wavenumber_col] = new_df.buoy.frequency_to_wavenumber()
+            if direction_col not in self._obj.columns:
+                new_df[direction_col] = new_df.buoy.wave_direction()
+            if drift_speed_col not in self._obj.columns:
+                new_df[[drift_speed_col, drift_direction_col]] \
+                                        = new_df.buoy.drift_speed_and_direction()
+
+            # Apply the Doppler correction to each frequency array. Results can be
+            # added directly to the DataFrame copy using `result_type='expand'`.
+            #TODO: can be vectorized if all frequencies have the same shape...
+            new_cols = [self.vars.absolute_frequency,
+                        self.vars.u_dot_k,
+                        self.vars.wave_drift_alignment]
+            new_df[new_cols] = new_df.apply(
+                lambda df: buoy.doppler_correct(
+                    drift_direction_going=np.array([df[drift_direction_col]]),
+                    wave_direction_coming=df[direction_col],
+                    drift_speed=np.array([df[drift_speed_col]]),
+                    intrinsic_frequency=df[frequency_col],
+                    wavenumber=df[wavenumber_col],
+                ),
+                axis=1,
+                result_type='expand',
+            )
+            return new_df
+
+    def doppler_adjust(
         self,
-        frequency_col: Optional[str] = None,
-        wavenumber_col: Optional[str] = None,
-        direction_col: Optional[str] = None,
+        frequency_cutoff,
+        energy_density_obs_col: Optional[str] = None,
+        frequency_obs_col: Optional[str] = None,
         drift_speed_col: Optional[str] = None,
         drift_direction_col: Optional[str] = None,
+        direction_col: Optional[str] = None,
+        **kwargs,
     ) -> pd.DataFrame:
-        """ Doppler correct frequencies and return a new DataFrame."""
+        """
+        Doppler adjust a 1-D spectrum to the intrinsic reference frame
+        using the omnidirectional solutions and return as a DataFrame.
+        """
         #TODO: need to group by id
-
         # TODO: this is not elegant
-        if frequency_col is None:
-            frequency_col = self.vars.frequency
-        if wavenumber_col is None:
-            wavenumber_col = self.vars.wavenumber
-        if direction_col is None:
-            direction_col = self.vars.direction
+        if energy_density_obs_col is None:
+            energy_density_obs_col = self.vars.energy_density
+        if frequency_obs_col is None:
+            frequency_obs_col = self.vars.frequency
         if drift_speed_col is None:
             drift_speed_col = self.vars.drift_speed
         if drift_direction_col is None:
             drift_direction_col = self.vars.drift_direction
+        if direction_col is None:
+            direction_col = self.vars.direction
 
-        new_df = self._obj.copy(deep=False)  # TODO: confirm this is right
+        # new_df = self._obj.copy(deep=False)  # TODO: confirm this is right
 
         # Calculate any missing columns.
-        if wavenumber_col not in self._obj.columns:
-            new_df[wavenumber_col] = new_df.buoy.frequency_to_wavenumber()
-        if direction_col not in self._obj.columns:
-            new_df[direction_col] = new_df.buoy.wave_direction()
-        if drift_speed_col not in self._obj.columns:
-            new_df[[drift_speed_col, drift_direction_col]] \
-                                    = new_df.buoy.drift_speed_and_direction()
+        # if direction_col not in self._obj.columns:
+        #     new_df[direction_col] = new_df.buoy.wave_direction()
+        # if drift_speed_col not in self._obj.columns:
+        #     new_df[[drift_speed_col, drift_direction_col]] \
+        #                             = new_df.buoy.drift_speed_and_direction()
 
-        # Apply the Doppler correction to each frequency array. Results can be
+        # Apply the Doppler adjustment to each frequency array. Results can be
         # added directly to the DataFrame copy using `result_type='expand'`.
-        #TODO: can be vectorized if all frequencies have the same shape...
-        new_cols = [self.vars.absolute_frequency,
-                    self.vars.u_dot_k,
-                    self.vars.wave_drift_alignment]
-        new_df[new_cols] = new_df.apply(
-            lambda df: buoy.doppler_correct(
-                drift_direction_going=np.array([df[drift_direction_col]]),
+        # new_df[new_cols] = new_df.apply(
+        intrinsic_spectrum = self._obj.apply(
+            lambda df: buoy.doppler_adjust(
+                energy_density_obs=df[energy_density_obs_col],
+                frequency_obs=df[frequency_obs_col],
+                drift_speed=df[drift_speed_col],
+                drift_direction_going=df[drift_direction_col],
                 wave_direction_coming=df[direction_col],
-                drift_speed=np.array([df[drift_speed_col]]),
-                intrinsic_frequency=df[frequency_col],
-                wavenumber=df[wavenumber_col],
+                frequency_cutoff=frequency_cutoff,
+                **kwargs,
             ),
             axis=1,
             result_type='expand',
         )
-        return new_df
+        new_cols = ['energy_density_int', 'frequency_int']  #, 'misalignment_deg', 'jacobian', 'projected_speed']
+        intrinsic_spectrum.columns = new_cols
+        return intrinsic_spectrum
 
+    #TODO: delete this method?
     def doppler_correct_mean_square_slope(self) -> pd.DataFrame:
         """ Doppler correct mean square slope and return a new DataFrame."""
         new_df = self._obj.copy(deep=False)

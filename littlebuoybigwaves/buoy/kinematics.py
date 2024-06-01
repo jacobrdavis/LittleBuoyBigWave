@@ -118,13 +118,16 @@ def doppler_adjust(
     intrinsic reference frame using the omnidirectional solutions described in
     Collins et al. (2017) and Colosi et al. (2023).
 
-    Adapted from the map_omni_dir_spectrum.m source code for:
+    Adapted from the map_omni_dir_spectrum.m source code for Colosi et al.
+    (2023) available at: https://github.com/lcolosi/WaveSpectrum/tree/main.
 
-    Luke Colosi, Nicholas Pizzo, Laurent Grare, Nick Statom, and Luc Lenain.
-    "Observations of Surface Gravity Wave Spectra from Moving Platforms."
-    Journal of Atmospheric and Oceanic Technology (2023)
-
-    Available at: https://github.com/lcolosi/WaveSpectrum/tree/main
+    References:
+    Collins, C. O. et al. (2017) “Doppler Correction of Wave Frequency Spectra
+        Measured by Underway Vessels” Journal of Atmospheric and Oceanic
+        Technology https://doi.org/10.1175/JTECH-D-16-0138
+    Colosi, Luke et al. (2023) “Observations of Surface Gravity Wave Spectra
+        from Moving Platforms.” Journal of Atmospheric and Oceanic Technology
+        https://doi.org/10.1175/JTECH-D-23-0022.1.
 
     Args:
         energy_density_obs (np.ndarray): 1-D energy density frequency spectrum
@@ -175,13 +178,6 @@ def doppler_adjust(
     jacobian = np.gradient(frequency_obs, frequency_int)
     energy_density_int = energy_density_obs * jacobian
 
-    #TODO: uniform frequency approach:
-    # df_obs = np.unique(np.round(np.diff(frequency_obs), 4))
-    # df_int = np.diff(frequency_int)
-    # jacobian = df_obs / df_int
-    # energy_density_int = np.full(energy_density_obs.shape, np.nan)
-    # energy_density_int[0:len(jacobian)] = energy_density_obs[0:len(jacobian)] * jacobian
-
     # If True, interpolate the intrinsic energy density onto the observed
     # frequency array.
     if interpolate:
@@ -192,7 +188,7 @@ def doppler_adjust(
     else:
         pass
 
-    return energy_density_int, frequency_int
+    return energy_density_int, frequency_int  #, misalignment_deg, jacobian, projected_speed
 
 
 def _frequency_int_solution(frequency_obs, projected_speed):
