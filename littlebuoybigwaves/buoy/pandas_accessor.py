@@ -5,6 +5,7 @@ Pandas Dataframe buoy accessor and associated methods.
 
 # TODO:
 # - Output DataFrames as individual series? (named?)
+#       e.g., a,b,c = df.iloc[:,0], df.iloc[:,1], df.iloc[:,2]
 # - Construct idxs by intersecting vars with index names?
 # - Many methods can be vectorized if all frequencies have the same shape...
 #   Might consider adding a check for uniform frequency arrays and subsequent
@@ -17,7 +18,7 @@ __all__ = [
 ]
 
 import types
-from typing import List, Tuple, Optional
+from typing import Callable, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
@@ -101,6 +102,19 @@ class BuoyDataFrameAccessor:
         drifter_ds = xr.merge([drifter_bulk_ds, drifter_spectral_ds])
         drifter_ds[self.vars.time] = pd.DatetimeIndex(drifter_ds[self.vars.time].values)
         return drifter_ds
+
+    #TODO: this won't work easily since the columns are accessed from df
+    # def apply_row_wise(self, func: Callable, apply_kwargs=None, *args, **kwargs) -> pd.DataFrame:
+    #     mean_square_slope = self._obj.apply(
+    #             lambda df: func(
+    #                 *args,
+    #                 **kwargs,
+    #             ),
+    #             axis=1,
+    #             **apply_kwargs,
+    #         )
+
+    # def apply_row_wise_and_expand():
 
     def frequency_to_wavenumber(self, **kwargs) -> pd.Series:
         """ Convert frequency to wavenumber and return it as a Series. """
@@ -416,7 +430,7 @@ class BuoyDataFrameAccessor:
             axis=1,
             result_type='expand',
         )
-        new_cols = ['energy_density_int', 'frequency_int']  #, 'misalignment_deg', 'jacobian', 'projected_speed']
+        new_cols = ['energy_density_int', 'frequency_int']  # 'misalignment_deg', 'jacobian', 'projected_speed']
         intrinsic_spectrum.columns = new_cols
         return intrinsic_spectrum
 
@@ -452,6 +466,10 @@ class BuoyDataFrameAccessor:
         # plot this array's data on a map, e.g., using Cartopy
         pass
 
+
+def _unpack_df(df) -> Tuple[pd.Series]:
+    """ Unpack DataFrame columns into Series. """
+    return tuple(series for _, series in df.items())
 
 # @pd.api.extensions.register_dataframe_accessor("buoy")
 # class BuoySeriesAccessor:
