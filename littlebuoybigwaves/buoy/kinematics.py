@@ -1,17 +1,10 @@
 """
-Kinematics functions.
+Buoy kinematics functions.
 """
-
-# TODO:
-# - rename/unify functions and variables
-
 
 __all__ = [
     "drift_speed_and_direction",
-    "doppler_shift",  # TODO: remove
-    "doppler_correct",  # TODO: remove
     "doppler_adjust",
-    "doppler_correct_mean_square_slope",
     "coming_to_going",
     "going_to_coming",
     "frequency_to_angular_frequency",
@@ -65,43 +58,6 @@ def drift_speed_components(drift_speed, drift_dir_deg):
     east_drift_speed = drift_speed * np.sin(np.deg2rad(drift_dir_deg))
     north_drift_speed = drift_speed * np.cos(np.deg2rad(drift_dir_deg))
     return east_drift_speed, north_drift_speed
-
-
-def doppler_shift(*args, **kwargs):
-    """ Alias to renamed function `doppler_correct` """
-    return doppler_correct(*args, **kwargs)
-
-
-# def haversine_distance(longitude, latitude, **kwargs):
-#     """ Alias to renamed function `great_circle_pathwise` """
-#     return great_circle_pathwise(longitude, latitude, **kwargs)
-
-
-#TODO: remove (naive implementation without solving for k or Jacobian)
-def doppler_correct(
-    drift_direction_going: np.ndarray,
-    wave_direction_coming: np.ndarray,
-    drift_speed: np.ndarray,
-    intrinsic_frequency: np.ndarray,
-    wavenumber: np.ndarray,
-) -> Tuple:
-    # TODO: specify shapes...
-    # TODO: fix!
-    # https://github.com/lcolosi/WaveSpectrum/blob/main/tools/map_omni_dir_spectrum.m
-    # Compute drift-wave misalignment.
-    wave_direction_going = coming_to_going(wave_direction_coming, modulus=360)
-    misalignment_deg = wave_drift_alignment(wave_direction_going, drift_direction_going)
-
-    # Compute the dot product of the drift velocity and wavenumber.
-    misalignment_rad = np.deg2rad(misalignment_deg)
-    u_dot_k = drift_speed[:, None] * wavenumber * np.cos(misalignment_rad)
-
-    # Adjust the intrinsic frequency by u dot k; note units of rad/s.
-    intrinsic_angular_frequency = frequency_to_angular_frequency(intrinsic_frequency)
-    absolute_angular_frequency = intrinsic_angular_frequency + u_dot_k
-    absolute_frequency = angular_frequency_to_frequency(absolute_angular_frequency)
-
-    return absolute_frequency.squeeze(), u_dot_k.squeeze(), misalignment_deg.squeeze()
 
 
 def doppler_adjust(
@@ -303,33 +259,6 @@ def _branch_3_case_3(frequency_obs, projected_speed):
     return frequency_int
 
 
-#TODO: remove
-def doppler_correct_mean_square_slope(
-    drift_direction_going: np.ndarray,
-    wave_direction_coming: np.ndarray,
-    drift_speed: np.ndarray,
-    frequency,
-    energy_density,
-) -> np.ndarray:
-    #TODO:
-    g = 9.81
-
-    # Compute drift-wave misalignment.
-    wave_direction_going = coming_to_going(wave_direction_coming, modulus=360)
-    misalignment_deg = wave_drift_alignment(wave_direction_going, drift_direction_going)
-
-    misalignment_rad = np.deg2rad(misalignment_deg)
-    u_cos_theta = drift_speed[:, None] * np.cos(misalignment_rad)
-
-    mss = 16 * (np.pi * frequency)**4 * energy_density / g**2
-    ds1 = 8 * (np.pi * frequency * u_cos_theta)**1 / g**1
-    ds2 = 24 * (np.pi * frequency * u_cos_theta)**2 / g**2
-    ds3 = 32 * (np.pi * frequency * u_cos_theta)**3 / g**3
-    ds4 = 16 * (np.pi * frequency * u_cos_theta)**4 / g**4
-    mss_corrected = np.trapz(mss * (1 + ds1 + ds2 + ds3 + ds4), x=frequency)
-    return mss_corrected.squeeze()
-
-
 def wave_drift_alignment(  #TODO: pick one: alignment or misalignment?
     wave_direction_going: np.ndarray,
     drift_direction_going: np.ndarray,
@@ -364,4 +293,3 @@ def angular_frequency_to_frequency(angular_frequency):
 def _append_last(arr: np.ndarray):
     """Helper function to append the last value of an array to itself."""
     return np.append(arr, arr[-1])
-
